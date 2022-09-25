@@ -12,7 +12,6 @@ if TYPE_CHECKING:
 
 
 class ConversationExistError(Exception):
-
     def __init__(self, msg: Optional[str] = None):
         self.msg = msg
         super().__init__(self.msg)
@@ -22,11 +21,7 @@ class Conversation:
     _chat: Any
 
     def __init__(
-        self,
-        bot: "Bot",
-        input_chat: Union[str, int],
-        timeout: int,
-        max_messages: int
+        self, bot: "Bot", input_chat: Union[str, int], timeout: int, max_messages: int
     ) -> None:
         self.bot = bot
         self.client = self.bot.client
@@ -37,8 +32,9 @@ class Conversation:
         self._timeout = timeout
 
     @classmethod
-    async def new(cls, bot: "Bot", input_chat: Union[str, int], timeout: int,
-                  max_messages: int) -> "Conversation":
+    async def new(
+        cls, bot: "Bot", input_chat: Union[str, int], timeout: int, max_messages: int
+    ) -> "Conversation":
 
         self = cls(bot, input_chat, timeout, max_messages)
         self._chat = await self.client.get_chat(self._input_chat)
@@ -71,7 +67,7 @@ class Conversation:
         return response
 
     async def mark_read(self, max_id: int = 0) -> bool:
-        return await self.bot.client.read_history(self.chat.id, max_id)
+        return await self.bot.client.read_chat_history(self.chat.id, max_id)
 
     async def _get_message(self, **kwargs: Any) -> Message:
         if self._counter >= self._max_incoming:
