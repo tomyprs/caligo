@@ -1,28 +1,46 @@
+"""Anjani database client"""
+# Copyright (C) 2020 - 2022  UserbotIndo Team, <https://github.com/userbotindo.git>
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
 from contextlib import asynccontextmanager
 from typing import (
     Any,
     AsyncGenerator,
     FrozenSet,
     List,
-    MutableMapping,
+    Mapping,
     Optional,
     Set,
     Tuple,
-    Union
+    Union,
 )
 
-from bson import CodecOptions
-from bson.codec_options import DEFAULT_CODEC_OPTIONS
+from bson.codec_options import DEFAULT_CODEC_OPTIONS, CodecOptions
 from bson.son import SON
 from bson.timestamp import Timestamp
-from pymongo import MongoClient
 from pymongo.client_session import TransactionOptions
 from pymongo.collation import Collation
 from pymongo.driver_info import DriverInfo
+from pymongo.mongo_client import MongoClient
 from pymongo.read_concern import ReadConcern
 from pymongo.read_preferences import ReadPreference
 from pymongo.topology_description import TopologyDescription
+from pymongo.typings import _Address
 from pymongo.write_concern import DEFAULT_WRITE_CONCERN, WriteConcern
+
+from caligo import util
 
 from .base import AsyncBaseProperty
 from .change_stream import AsyncChangeStream
@@ -31,24 +49,22 @@ from .command_cursor import AsyncCommandCursor, CommandCursor
 from .db import AsyncDatabase
 from .types import ReadPreferences
 
-from caligo import util
-
 
 class AsyncClient(AsyncBaseProperty):
     """AsyncIO :obj:`~MongoClient`
 
-       *DEPRECATED* methods are removed in this class.
+    *DEPRECATED* methods are removed in this class.
     """
 
     dispatch: MongoClient
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         kwargs.update(
-            {"driver": DriverInfo(
-                name="AsyncIOMongoDB",
-                version="staging",
-                platform="AsyncIO"
-            )}
+            {
+                "driver": DriverInfo(
+                    "AsyncIOMongoDB", version="staging", platform="AsyncIO"
+                )
+            }
         )
         dispatch = MongoClient(*args, **kwargs)
 
@@ -58,13 +74,16 @@ class AsyncClient(AsyncBaseProperty):
     def __getitem__(self, name: str) -> AsyncDatabase:
         return AsyncDatabase(self, self.dispatch[name])
 
+    def __hash__(self) -> int:
+        return hash(self.address)
+
     async def close(self) -> None:
         await util.run_sync(self.dispatch.close)
 
     async def drop_database(
         self,
         name_or_database: Union[str, AsyncDatabase],
-        session: Optional[AsyncClientSession] = None
+        session: Optional[AsyncClientSession] = None,
     ) -> None:
         if isinstance(name_or_database, AsyncDatabase):
             name_or_database = name_or_database.name
@@ -72,7 +91,7 @@ class AsyncClient(AsyncBaseProperty):
         return await util.run_sync(
             self.dispatch.drop_database,
             name_or_database,
-            session=session.dispatch if session else session
+            session=session.dispatch if session else session,
         )
 
     def get_database(
@@ -82,7 +101,7 @@ class AsyncClient(AsyncBaseProperty):
         codec_options: Optional[CodecOptions] = None,
         read_preference: Optional[ReadPreferences] = None,
         write_concern: Optional[WriteConcern] = None,
-        read_concern: Optional[ReadConcern] = None
+        read_concern: Optional[ReadConcern] = None,
     ) -> AsyncDatabase:
         return AsyncDatabase(
             self,
@@ -91,8 +110,8 @@ class AsyncClient(AsyncBaseProperty):
                 codec_options=codec_options,
                 read_preference=read_preference,
                 write_concern=write_concern,
-                read_concern=read_concern
-            )
+                read_concern=read_concern,
+            ),
         )
 
     def get_default_database(
@@ -102,7 +121,7 @@ class AsyncClient(AsyncBaseProperty):
         codec_options: Optional[CodecOptions] = None,
         read_preference: Optional[ReadPreferences] = None,
         write_concern: Optional[WriteConcern] = None,
-        read_concern: Optional[ReadConcern] = None
+        read_concern: Optional[ReadConcern] = None,
     ) -> AsyncDatabase:
         return AsyncDatabase(
             self,
@@ -111,8 +130,8 @@ class AsyncClient(AsyncBaseProperty):
                 codec_options=codec_options,
                 read_preference=read_preference,
                 write_concern=write_concern,
-                read_concern=read_concern
-            )
+                read_concern=read_concern,
+            ),
         )
 
     async def list_database_names(
@@ -120,7 +139,7 @@ class AsyncClient(AsyncBaseProperty):
     ) -> List[str]:
         return await util.run_sync(
             self.dispatch.list_database_names,
-            session=session.dispatch if session else session
+            session=session.dispatch if session else session,
         )
 
     async def list_databases(
@@ -128,16 +147,18 @@ class AsyncClient(AsyncBaseProperty):
     ) -> AsyncCommandCursor:
         cmd = SON([("listDatabases", 1)])
         cmd.update(kwargs)
-        database = self.get_database("admin",
-                                     codec_options=DEFAULT_CODEC_OPTIONS,
-                                     read_preference=ReadPreference.PRIMARY,
-                                     write_concern=DEFAULT_WRITE_CONCERN)
-        res: MutableMapping[str, Any] = await util.run_sync(
+        database = self.get_database(
+            "admin",
+            codec_options=DEFAULT_CODEC_OPTIONS,
+            read_preference=ReadPreference.PRIMARY,
+            write_concern=DEFAULT_WRITE_CONCERN,
+        )
+        res: Mapping[str, Any] = await util.run_sync(
             database.dispatch._retryable_read_command,  # skipcq: PYL-W0212
             cmd,
-            session=session.dispatch if session else session
+            session=session.dispatch if session else session,
         )
-        cursor: MutableMapping[str, Any] = {
+        cursor: Mapping[str, Any] = {
             "id": 0,
             "firstBatch": res["databases"],
             "ns": "admin.$cmd",
@@ -146,10 +167,9 @@ class AsyncClient(AsyncBaseProperty):
 
     async def server_info(
         self, session: Optional[AsyncClientSession] = None
-    ) -> MutableMapping[str, Any]:
+    ) -> Mapping[str, Any]:
         return await util.run_sync(
-            self.dispatch.server_info,
-            session=session.dispatch if session else session
+            self.dispatch.server_info, session=session.dispatch if session else session
         )
 
     # Don't need await when entering the context manager,
@@ -166,7 +186,7 @@ class AsyncClient(AsyncBaseProperty):
             self.dispatch.start_session,
             causal_consistency=causal_consistency,
             default_transaction_options=default_transaction_options,
-            snapshot=snapshot
+            snapshot=snapshot,
         )
 
         async with AsyncClientSession(self, session) as session:
@@ -174,7 +194,7 @@ class AsyncClient(AsyncBaseProperty):
 
     def watch(
         self,
-        pipeline: Optional[List[MutableMapping[str, Any]]] = None,
+        pipeline: Optional[List[Mapping[str, Any]]] = None,
         *,
         full_document: Optional[str] = None,
         resume_after: Optional[Any] = None,
@@ -183,7 +203,8 @@ class AsyncClient(AsyncBaseProperty):
         collation: Optional[Collation] = None,
         start_at_operation_time: Optional[Timestamp] = None,
         session: Optional[AsyncClientSession] = None,
-        start_after: Optional[Any] = None
+        start_after: Optional[Any] = None,
+        comment: Optional[str] = None,
     ) -> AsyncChangeStream:
         return AsyncChangeStream(
             self,
@@ -195,7 +216,8 @@ class AsyncClient(AsyncBaseProperty):
             collation,
             start_at_operation_time,
             session,
-            start_after
+            start_after,
+            comment,
         )
 
     @property
@@ -227,35 +249,7 @@ class AsyncClient(AsyncBaseProperty):
         return self.dispatch.is_primary
 
     @property
-    def local_threshold_ms(self) -> int:
-        return self.dispatch.local_threshold_ms
-
-    @property
-    def max_bson_size(self) -> int:
-        return self.dispatch.max_bson_size
-
-    @property
-    def max_idle_time_ms(self) -> Optional[int]:
-        return self.dispatch.max_idle_time_ms
-
-    @property
-    def max_message_size(self) -> int:
-        return self.dispatch.max_message_size
-
-    @property
-    def max_pool_size(self) -> int:
-        return self.dispatch.max_pool_size
-
-    @property
-    def max_write_batch_size(self) -> int:
-        return self.dispatch.max_write_batch_size
-
-    @property
-    def min_pool_size(self) -> int:
-        return self.dispatch.min_pool_size
-
-    @property
-    def nodes(self) -> FrozenSet[Set[Tuple[str, int]]]:
+    def nodes(self) -> FrozenSet[_Address]:
         return self.dispatch.nodes
 
     @property
@@ -263,20 +257,8 @@ class AsyncClient(AsyncBaseProperty):
         return self.dispatch.primary
 
     @property
-    def retry_reads(self) -> bool:
-        return self.dispatch.retry_reads
-
-    @property
-    def retry_writes(self) -> bool:
-        return self.dispatch.retry_writes
-
-    @property
     def secondaries(self) -> Set[Tuple[str, int]]:
         return self.dispatch.secondaries
-
-    @property
-    def server_selection_timeout(self) -> int:
-        return self.dispatch.server_selection_timeout
 
     @property
     def topology_description(self) -> TopologyDescription:

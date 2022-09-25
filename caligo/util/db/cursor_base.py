@@ -1,3 +1,19 @@
+"""caligo database cursor core"""
+# Copyright (C) 2020 - 2022  UserbotIndo Team, <https://github.com/userbotindo.git>
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
 import asyncio
 from functools import partial
 from typing import (
@@ -5,43 +21,58 @@ from typing import (
     Any,
     Coroutine,
     Deque,
+    Generic,
     List,
-    MutableMapping,
+    Mapping,
     Optional,
     Tuple,
-    Union
+    Union,
 )
 
+from pymongo.client_session import ClientSession
+from pymongo.collection import Collection
 from pymongo.cursor import _QUERY_OPTIONS, Cursor, RawBatchCursor
-
-from .base import AsyncBase
-from .client_session import AsyncClientSession
-from .errors import InvalidOperation
+from pymongo.typings import _Address, _DocumentType
 
 from caligo import util
 
+from .base import AsyncBase
+from .errors import InvalidOperation
+
 if TYPE_CHECKING:
     from .collection import AsyncCollection
-    from .command_cursor import _LatentCursor, CommandCursor
+    from .command_cursor import CommandCursor, _LatentCursor
 
 
-class AsyncCursorBase(AsyncBase):
+class AsyncCursorBase(AsyncBase, Generic[_DocumentType]):
     """Base class for Cursor AsyncIOMongoDB instances
 
-       *DEPRECATED* methods are removed in this class.
+    *DEPRECATED* methods are removed in this class.
 
-       :meth:`~each()` is removed because we can iterate directly this class, 
-       And we now have :meth:`~to_list()` so yeah kinda useless
+    :meth:`~each()` is removed because we can iterate directly this class,
+    And we now have :meth:`~to_list()` so yeah kinda useless
     """
 
-    collection: "AsyncCollection"
-    dispatch: Union["_LatentCursor", "CommandCursor", Cursor, RawBatchCursor]
+    collection: Optional[
+        Union["AsyncCollection[_DocumentType]", Collection[_DocumentType]]
+    ]
+    dispatch: Union[
+        "_LatentCursor[_DocumentType]",
+        "CommandCursor[_DocumentType]",
+        Cursor[_DocumentType],
+        RawBatchCursor[_DocumentType],
+    ]
     loop: asyncio.AbstractEventLoop
 
     def __init__(
         self,
-        cursor: Union["_LatentCursor", "CommandCursor", Cursor, RawBatchCursor],
-        collection: "AsyncCollection" = None
+        cursor: Union[
+            "_LatentCursor[_DocumentType]",
+            "CommandCursor[_DocumentType]",
+            Cursor[_DocumentType],
+            RawBatchCursor[_DocumentType],
+        ],
+        collection: "Optional[AsyncCollection[_DocumentType]]" = None,
     ) -> None:
         super().__init__(cursor)
 
@@ -54,10 +85,17 @@ class AsyncCursorBase(AsyncBase):
 
         self.loop = asyncio.get_event_loop()
 
+    async def __aenter__(self) -> "AsyncCursorBase":
+        return self
+
+    async def __aexit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
+        if self.dispatch:
+            await self.close()
+
     def __aiter__(self) -> "AsyncCursorBase":
         return self
 
-    async def __anext__(self) -> MutableMapping[str, Any]:
+    async def __anext__(self) -> Mapping[str, Any]:
         return await self.next()
 
     def _buffer_size(self) -> int:
@@ -72,11 +110,12 @@ class AsyncCursorBase(AsyncBase):
     def _killed(self) -> bool:
         raise NotImplementedError
 
-    def _get_more(self) -> Union[asyncio.Future[int], Coroutine[Any, Any, int]]:
+    def _get_more(self) -> Coroutine[Any, Any, int]:
         if not self.alive:
             raise InvalidOperation(
                 "Can't call get_more() on a AsyncCursor that has been"
-                " exhausted or killed.")
+                " exhausted or killed."
+            )
 
         self.started = True
         return self._refresh()
@@ -84,9 +123,9 @@ class AsyncCursorBase(AsyncBase):
     def _to_list(
         self,
         length: Optional[int],
-        the_list: List[MutableMapping[str, Any]],
-        future: asyncio.Future[List[MutableMapping[str, Any]]],
-        get_more_future: asyncio.Future[int]
+        the_list: List[Mapping[str, Any]],
+        future: asyncio.Future[List[Mapping[str, Any]]],
+        get_more_future: asyncio.Future[int],
     ) -> None:
         # get_more_future is the result of self._get_more().
         # future will be the result of the user's to_list() call.
@@ -95,8 +134,6 @@ class AsyncCursorBase(AsyncBase):
             # Return early if the task was cancelled.
             if future.done():
                 return
-            collection = self.collection
-            fix_outgoing = collection.database._fix_outgoing  # skipcq: PYL-W0212
 
             if length is None:
                 n = result
@@ -105,12 +142,10 @@ class AsyncCursorBase(AsyncBase):
 
             i = 0
             while i < n:
-                the_list.append(
-                    fix_outgoing(self._data().popleft(), collection)
-                )
+                the_list.append(self._data().popleft())
                 i += 1
 
-            reached_length = (length is not None and len(the_list) >= length)
+            reached_length = length is not None and len(the_list) >= length
             if reached_length or not self.alive:
                 future.set_result(the_list)
             else:
@@ -121,7 +156,7 @@ class AsyncCursorBase(AsyncBase):
                         self._to_list,
                         length,
                         the_list,
-                        future
+                        future,
                     )
                 )
         except Exception as exc:  # skipcq: PYL-W0703
@@ -147,15 +182,15 @@ class AsyncCursorBase(AsyncBase):
 
     def to_list(
         self, length: Optional[int] = None
-    ) -> asyncio.Future[List[MutableMapping[str, Any]]]:
+    ) -> asyncio.Future[List[Mapping[str, Any]]]:
         if length is not None and length < 0:
-                raise ValueError("length must be non-negative")
+            raise ValueError("length must be non-negative")
 
         if self._query_flags() & _QUERY_OPTIONS["tailable_cursor"]:
             raise InvalidOperation("Can't call to_list on tailable cursor")
 
         future = self.loop.create_future()
-        the_list: List[MutableMapping[str, Any]] = []
+        the_list: List[Mapping[str, Any]] = []
 
         if not self.alive:
             future.set_result(the_list)
@@ -164,18 +199,14 @@ class AsyncCursorBase(AsyncBase):
         get_more_future = self.loop.create_task(self._get_more())
         get_more_future.add_done_callback(
             partial(
-                self.loop.call_soon_threadsafe,
-                self._to_list,
-                length,
-                the_list,
-                future
+                self.loop.call_soon_threadsafe, self._to_list, length, the_list, future
             )
         )
 
         return future
 
     @property
-    def address(self) -> Optional[Tuple[str, int]]:
+    def address(self) -> Optional[Union[Tuple[str, int], _Address]]:
         return self.dispatch.address
 
     @property
@@ -189,5 +220,5 @@ class AsyncCursorBase(AsyncBase):
         return self.dispatch.cursor_id
 
     @property
-    def session(self) -> Optional[AsyncClientSession]:
+    def session(self) -> Optional[ClientSession]:
         return self.dispatch.session
