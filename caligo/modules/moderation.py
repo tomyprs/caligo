@@ -32,8 +32,7 @@ class ModerationModule(module.Module):
         mention_slots = 4096 - len(mention_text)
 
         chat = ctx.msg.chat.id
-        async for member in self.bot.client.iter_chat_members(
-                chat, filter=user_filter):
+        async for member in self.bot.client.iter_chat_members(chat, filter=user_filter):
             mention_text += f"[\u200b](tg://user?id={member.user.id})"
 
             mention_slots -= 1
@@ -47,13 +46,12 @@ class ModerationModule(module.Module):
     @command.usage("[comment?]", optional=True)
     @command.alias("adm", "@admin")
     async def cmd_admin(self, ctx: command.Context) -> Optional[str]:
-        return await self.cmd_everyone(ctx,
-                                       tag="admin",
-                                       user_filter="administrators")
+        return await self.cmd_everyone(ctx, tag="admin", user_filter="administrators")
 
     @command.desc("Ban user(s) from the current chat by ID or reply")
-    @command.usage("[ID(s) of the user(s) to ban?, or reply to user's message]",
-                   optional=True)
+    @command.usage(
+        "[ID(s) of the user(s) to ban?, or reply to user's message]", optional=True
+    )
     async def cmd_ban(self, ctx: command.Context) -> str:
         input_ids = ctx.args
 
@@ -106,14 +104,15 @@ class ModerationModule(module.Module):
                 lines.append(user_spec)
 
             is_administrator = bool(
-                (await self.bot.client.get_chat_member(ctx.msg.chat.id, user.id)
-                ).status == "administrator")
+                (await self.bot.client.get_chat_member(ctx.msg.chat.id, user.id)).status
+                == "administrator"
+            )
 
             if is_administrator:
                 return "__I'm not gonna ban admin.__"
 
             try:
-                await ctx.msg.chat.kick_member(user.id)
+                await ctx.msg.chat.ban_member(user.id)
             except pyrogram.errors.ChatAdminRequired:
                 return "__I need permission to ban users in this chat.__"
 
@@ -131,14 +130,13 @@ class ModerationModule(module.Module):
             _chat_name = f" from **{chat.title}**"
             _chat_name2 = f" in **{chat.title}**"
         else:
-            chat = ctx.msg.chat.id
+            chat = ctx.chat.id
             _chat_name = ""
             _chat_name2 = ""
 
         await ctx.respond(f"Fetching members{_chat_name}...")
-        all_members = await self.bot.client.get_chat_members(chat)
-
         last_time = datetime.now()
+        all_members = []
         total_count = len(all_members)
         err_count = 0
         pruned_count = 0
@@ -147,12 +145,13 @@ class ModerationModule(module.Module):
         status_text = f"Pruning deleted members{_chat_name}..."
         await ctx.respond(status_text)
 
-        for member in all_members:
+        async for member in self.bot.client.get_chat_members(ctx.chat.id):
+            all_members.append(member)
             if not member.user.is_deleted:
                 continue
 
             try:
-                await self.bot.client.kick_chat_member(chat, member.user.id)
+                await self.bot.client.ban_chat_member(chat, member.user.id)
             except pyrogram.errors.ChatAdminRequired:
                 return "__I'm not an admin.__"
             except pyrogram.errors.UserAdminInvalid:
@@ -160,7 +159,10 @@ class ModerationModule(module.Module):
             else:
                 pruned_count += 1
 
-            percent_done = int((idx + 1) / total_count * 100)
+            try:
+                percent_done = int((idx + 1) / total_count * 100)
+            except ZeroDivisionError:
+                percent_done = 0
             now = datetime.now()
             delta = now - last_time
             if delta.total_seconds() >= 5:
@@ -171,21 +173,25 @@ class ModerationModule(module.Module):
             last_time = now
             idx += 1
 
-        percent_pruned = int(pruned_count / total_count * 100)
+        try:
+            percent_pruned = int(pruned_count / total_count * 100)
+        except ZeroDivisionError:
+            percent_pruned = 0
         return f"Pruned {pruned_count} deleted users{_chat_name2} — {percent_pruned}% of the original member count."
 
     @command.desc("reply to a message, mark as start until your purge command.")
     @command.usage("purge", reply=True)
-    async def cmd_purge(self,
-                        ctx: command.Context) -> Union[Optional[str], Tuple[str, Union[int, float]]]:
-        """ This function need permission to delete messages. """
+    async def cmd_purge(
+        self, ctx: command.Context
+    ) -> Union[Optional[str], Tuple[str, Union[int, float]]]:
+        """This function need permission to delete messages."""
         if not ctx.msg.reply_to_message:
             return "__Reply to a message.__"
 
         if ctx.msg.chat.type in ["group", "supergroup"]:
-            perm = (await
-                    ctx.bot.client.get_chat_member(ctx.msg.chat.id,
-                                                   "me")).can_delete_messages
+            perm = (
+                await ctx.bot.client.get_chat_member(ctx.msg.chat.id, "me")
+            ).can_delete_messages
             creator = ctx.msg.chat.is_creator
             if perm is not True and not creator:
                 return "__You can't delete message in this chat.__", 5
@@ -195,8 +201,7 @@ class ModerationModule(module.Module):
         msg_ids = []
         purged = 0
         before = datetime.now()
-        for msg_id in range(ctx.msg.reply_to_message.message_id,
-                            ctx.msg.message_id):
+        for msg_id in range(ctx.msg.reply_to_message.id, ctx.msg.id):
             msg_ids.append(msg_id)
             if len(msg_ids) == 100:
                 await ctx.bot.client.delete_messages(
@@ -225,10 +230,12 @@ class ModerationModule(module.Module):
     @command.desc("Delete the replied message.")
     @command.usage("del", reply=True)
     async def cmd_del(self, ctx: command.Context) -> Optional[str]:
-        """ reply to message as target, this function will delete that. """
+        """reply to message as target, this function will delete that."""
         if not ctx.msg.reply_to_message:
             return "__Reply to a message.__"
 
-        await asyncio.gather(ctx.msg.reply_to_message.delete(revoke=True),
-                             ctx.msg.delete(),
-                             return_exceptions=True)
+        await asyncio.gather(
+            ctx.msg.reply_to_message.delete(revoke=True),
+            ctx.msg.delete(),
+            return_exceptions=True,
+        )

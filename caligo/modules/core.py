@@ -4,14 +4,15 @@ from collections import defaultdict
 from typing import Any, ClassVar, Dict, List, MutableMapping, Optional
 
 import pyrogram
+from pyrogram import enums
 from pyrogram.errors import BotInlineDisabled, MessageDeleteForbidden
 from pyrogram.types import (
     CallbackQuery,
-    InlineQuery,
     InlineKeyboardButton,
     InlineKeyboardMarkup,
+    InlineQuery,
     InlineQueryResultArticle,
-    InputTextMessageContent
+    InputTextMessageContent,
 )
 
 from .. import __version__, command, listener, module, util
@@ -31,19 +32,14 @@ class CoreModule(module.Module):
         modules = list(self.bot.modules.keys())
         button: List[InlineKeyboardButton] = []
         for mod in modules:
-            button.append(InlineKeyboardButton(
-                mod, callback_data=f"menu({mod})".encode()))
+            button.append(
+                InlineKeyboardButton(mod, callback_data=f"menu({mod})".encode())
+            )
         buttons = [
-            button[i * 3:(i + 1) * 3]
-            for i in range((len(button) + 3 - 1) // 3)
+            button[i * 3 : (i + 1) * 3] for i in range((len(button) + 3 - 1) // 3)
         ]
         buttons.append(
-            [
-                InlineKeyboardButton(
-                    "✗ Close",
-                    callback_data="menu(Close)".encode()
-                )
-            ]
+            [InlineKeyboardButton("✗ Close", callback_data="menu(Close)".encode())]
         )
 
         return buttons
@@ -55,7 +51,8 @@ class CoreModule(module.Module):
                 id=str(uuid.uuid4()),
                 title="About Caligo",
                 input_message_content=InputTextMessageContent(
-                    "__Caligo is SelfBot based on Pyrogram library.__"),
+                    "__Caligo is SelfBot based on Pyrogram library.__"
+                ),
                 url=f"https://github.com/{repo}",
                 description="A Selfbot Telegram.",
                 thumb_url=None,
@@ -63,14 +60,15 @@ class CoreModule(module.Module):
                     [
                         [
                             InlineKeyboardButton(
-                                "⚡️ Repo",
-                                url=f"https://github.com/{repo}"),
+                                "⚡️ Repo", url=f"https://github.com/{repo}"
+                            ),
                             InlineKeyboardButton(
                                 "📖️ How To",
-                                url=f"https://github.com/{repo}#Installation"),
+                                url=f"https://github.com/{repo}#Installation",
+                            ),
                         ]
                     ]
-                )
+                ),
             )
         ]
         if query.from_user and (query.from_user.id == self.bot.uid):
@@ -80,11 +78,12 @@ class CoreModule(module.Module):
                     id=str(uuid.uuid4()),
                     title="Menu",
                     input_message_content=InputTextMessageContent(
-                        "**Caligo Menu Helper**"),
+                        "**Caligo Menu Helper**"
+                    ),
                     url=f"https://github.com/{repo}",
                     description="Menu Helper.",
                     thumb_url=None,
-                    reply_markup=InlineKeyboardMarkup(button)
+                    reply_markup=InlineKeyboardMarkup(button),
                 )
             )
 
@@ -94,16 +93,17 @@ class CoreModule(module.Module):
     @listener.pattern(r"menu\((\w+)\)$")
     async def on_callback_query(self, query: CallbackQuery) -> None:
         if query.from_user and query.from_user.id != self.bot.uid:
-            await query.answer("Sorry, you don't have permission to access.",
-                               show_alert=True)
+            await query.answer(
+                "Sorry, you don't have permission to access.", show_alert=True
+            )
             return
 
         mod = query.matches[0].group(1)
         if mod == "Back":
             button = await util.run_sync(self.build_button)
             await query.edit_message_text(
-                "**Caligo Menu Helper**",
-                reply_markup=InlineKeyboardMarkup(button))
+                "**Caligo Menu Helper**", reply_markup=InlineKeyboardMarkup(button)
+            )
             return
         if mod == "Close":
             button = await util.run_sync(self.build_button)
@@ -120,7 +120,8 @@ class CoreModule(module.Module):
                 await query.answer("😿️ Couldn't close message")
                 await query.edit_message_text(
                     "**Caligo Menu Helper**",
-                    reply_markup=InlineKeyboardMarkup(button[:-1]))
+                    reply_markup=InlineKeyboardMarkup(button[:-1]),
+                )
 
             return
 
@@ -142,11 +143,12 @@ class CoreModule(module.Module):
             response = util.text.join_map(commands, heading=mod_name)
 
         if response is not None:
-            button = [[InlineKeyboardButton(
-                    "⇠ Back", callback_data="menu(Back)".encode()
-            )]]
+            button = [
+                [InlineKeyboardButton("⇠ Back", callback_data="menu(Back)".encode())]
+            ]
             await query.edit_message_text(
-                response, reply_markup=InlineKeyboardMarkup(button))
+                response, reply_markup=InlineKeyboardMarkup(button)
+            )
 
             return
 
@@ -160,14 +162,16 @@ class CoreModule(module.Module):
             response: Any
             try:
                 response = await self.bot.client.get_inline_bot_results(
-                    self.bot.bot_user.username)
+                    self.bot.bot_user.username
+                )
             except BotInlineDisabled:
                 return "__Bot Inline Disabled__"
             else:
                 await ctx.msg.delete()
-    
+
             res: Any = await self.bot.client.send_inline_bot_result(
-                ctx.msg.chat.id, response.query_id, response.results[1].id)
+                ctx.msg.chat.id, response.query_id, response.results[1].id
+            )
             self.cache[res.updates[0].id] = ctx.msg.chat.id
 
             return
@@ -241,10 +245,7 @@ Expected parameters: {args_desc}"""
 
         self.bot.prefix = new_prefix
         await self.db.find_one_and_update(
-            {"_id": self.name},
-            {
-                "$set": {"prefix": new_prefix}
-            }
+            {"_id": self.name}, {"$set": {"prefix": new_prefix}}
         )
 
         return f"Prefix set to `{self.bot.prefix}`"
@@ -305,8 +306,7 @@ Expected parameters: {args_desc}"""
                 "Chats": num_chats,
             },
             heading='<a href="https://github.com/adekmaulana/caligo">Caligo</a> info',
-            parse_mode="html",
         )
 
         # HTML allows us to send a bolded link (nested entities)
-        await ctx.respond(response, parse_mode="html")
+        await ctx.respond(response)

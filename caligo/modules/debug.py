@@ -81,7 +81,7 @@ class DebugModule(module.Module):
         if ctx.msg.reply_to_message:
             reply_msg = ctx.msg.reply_to_message
             sender = reply_msg.from_user
-            lines.append(f"Message ID: `{reply_msg.message_id}`")
+            lines.append(f"Message ID: `{reply_msg.id}`")
 
             if sender:
                 lines.append(f"Message author ID: `{sender.id}`")
@@ -100,8 +100,8 @@ class DebugModule(module.Module):
                 )
 
             f_msg_id = None
-            if reply_msg.forward_from_message_id:
-                f_msg_id = reply_msg.forward_from_message_id
+            if reply_msg.forward_from_message.id:
+                f_msg_id = reply_msg.forward_from_message.id
                 lines.append(f"Forwarded message original ID: `{f_msg_id}`")
 
             if f_chat is not None and f_msg_id is not None:

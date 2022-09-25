@@ -116,7 +116,7 @@ class StickerModule(module.Module):
             ("text", emoji, "/publish"),
             ("text", "/publish", "/skip"),
             ("text", "/skip", "Animals"),
-            ("text", pack_name, "Kaboom!")
+            ("text", pack_name, "Kaboom!"),
         ]
 
         success = False
@@ -199,8 +199,9 @@ class StickerModule(module.Module):
             return ret
 
         try:
-            await self.bot.client.send(GetStickerSet(
-                stickerset=InputStickerSetShortName(short_name=pack_name)
+            await self.bot.client.invoke(
+                GetStickerSet(
+                    stickerset=InputStickerSetShortName(short_name=pack_name), hash=0
                 )
             )
         except StickersetInvalid:
@@ -243,8 +244,9 @@ class StickerModule(module.Module):
         check = self.kang_db.get(num) if self.kang_db is not None else None
         if check:
             try:
-                await self.bot.client.send(GetStickerSet(
-                    stickerset=InputStickerSetShortName(short_name=check)
+                await self.bot.client.invoke(
+                    GetStickerSet(
+                        stickerset=InputStickerSetShortName(short_name=check), hash=0
                     )
                 )
             except StickersetInvalid:
@@ -255,18 +257,13 @@ class StickerModule(module.Module):
         emoji = ctx.args[1] if len(ctx.args) > 1 else "❓"
         pack_name = self.bot.user.username + f"_kangPack_VOL{num}"
         await self.db.update_one(
-            {"_id": self.name},
-            {
-                "$set": {
-                    f"pack_name.{num}": pack_name
-                }
-            },
-            upsert=True
+            {"_id": self.name}, {"$set": {f"pack_name.{num}": pack_name}}, upsert=True
         )
 
         try:
-            await self.bot.client.send(GetStickerSet(
-                stickerset=InputStickerSetShortName(short_name=pack_name)
+            await self.bot.client.invoke(
+                GetStickerSet(
+                    stickerset=InputStickerSetShortName(short_name=pack_name), hash=0
                 )
             )
         except StickersetInvalid:
