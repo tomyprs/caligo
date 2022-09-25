@@ -14,6 +14,7 @@ from . import (
     time,
     version,
 )
+from .media_utils import get_file_id, get_media, progress
 
 File = file.File
 TelegramConfig = config.TelegramConfig()

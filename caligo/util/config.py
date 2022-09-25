@@ -28,6 +28,7 @@ class TelegramConfig(MutableMapping[_KT, _VT]):
             "github_repo": os.environ.get("GITHUB_REPO"),
             "github_token": os.environ.get("GITHUB_TOKEN"),
             "heroku_api_key": os.environ.get("HEROKU_API_KEY"),
+            "log_channel": os.environ.get("LOG_CHANNEL"),
             "heroku_app_name": os.environ.get("HEROKU_APP"),
             "mirror_enabled": os.environ.get("MIRROR_MODULE") == "enable",
             "string_session": os.environ.get("STRING_SESSION"),
@@ -38,7 +39,7 @@ class TelegramConfig(MutableMapping[_KT, _VT]):
                 if key == "download_path":
                     value = AsyncPath(Path.home() / "downloads")
                 elif key == "github_repo":
-                    value = "adekmaulana/caligo"
+                    value = "tomyprs/caligo"
 
                 if value == "":
                     value = None
