@@ -19,8 +19,9 @@ class CommandDispatcher(Base):
 
         super().__init__(**kwargs)
 
-    def register_command(self: "Bot", mod: module.Module, name: str,
-                         func: command.CommandFunc) -> None:
+    def register_command(
+        self: "Bot", mod: module.Module, name: str, func: command.CommandFunc
+    ) -> None:
         cmd = command.Command(name, mod, func)
 
         if name in self.commands:
@@ -70,11 +71,10 @@ class CommandDispatcher(Base):
             self.unregister_command(cmd)
 
     def command_predicate(self: "Bot") -> Filter:
-
         async def func(_, __, msg: pyrogram.types.Message):
             if msg.text is not None and msg.text.startswith(self.prefix):
                 parts = msg.text.split()
-                parts[0] = parts[0][len(self.prefix):]
+                parts[0] = parts[0][len(self.prefix) :]
                 msg.command = parts
                 return True
 
@@ -82,8 +82,9 @@ class CommandDispatcher(Base):
 
         return create(func)
 
-    async def on_command(self: "Bot", _: pyrogram.Client,
-                         msg: pyrogram.types.Message) -> None:
+    async def on_command(
+        self: "Bot", _: pyrogram.client.Client, msg: pyrogram.types.Message
+    ) -> None:
         cmd = None
 
         # Don't process via inline
@@ -96,8 +97,9 @@ class CommandDispatcher(Base):
             except KeyError:
                 return
 
-            if ((cmd.module.name == "GoogleDrive" and not cmd.module.disabled)
-                    and cmd.name not in ["gdreset", "gdclear"]):
+            if (
+                cmd.module.name == "GoogleDrive" and not cmd.module.disabled
+            ) and cmd.name not in ["gdreset", "gdclear"]:
                 ret = await cmd.module.authorize(msg)
 
                 if ret is False:
@@ -118,8 +120,9 @@ class CommandDispatcher(Base):
 
                 if isinstance(ret, Tuple):
                     if not isinstance(ret[1], (int, float)):
-                        raise TypeError("Second value must be int/float, "
-                                        f"got: {type(ret[1])}")
+                        raise TypeError(
+                            "Second value must be int/float, " f"got: {type(ret[1])}"
+                        )
                     await ctx.respond(ret[0], delete_after=ret[1])
                 else:
                     if ret is not None:
@@ -129,13 +132,13 @@ class CommandDispatcher(Base):
                     f"Command '{cmd.name}' triggered a message edit with no changes"
                 )
             except Exception as e:  # skipcq: PYL-W0703
-                cmd.module.log.error(f"Error in command '{cmd.name}'",
-                                     exc_info=e)
+                cmd.module.log.error(f"Error in command '{cmd.name}'", exc_info=e)
                 await ctx.respond(
                     "**In**:\n"
                     f"{ctx.input if ctx.input is not None else msg.text}\n\n"
                     "**Out**:\n⚠️ Error executing command:\n"
-                    f"```{util.error.format_exception(e)}```")
+                    f"```{util.error.format_exception(e)}```"
+                )
 
             await self.dispatch_event("command", cmd, msg)
         except Exception as e:  # skipcq: PYL-W0703

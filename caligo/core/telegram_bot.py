@@ -3,7 +3,8 @@ import signal
 from typing import TYPE_CHECKING, Any, List, Optional, Type, Union
 
 import pyrogram
-from pyrogram import Client, filters
+from pyrogram import filters
+from pyrogram.client import Client
 from pyrogram.handlers import (
     CallbackQueryHandler,
     DeletedMessagesHandler,
@@ -19,8 +20,9 @@ from .base import Base
 if TYPE_CHECKING:
     from .bot import Bot
 
-Handler = Union[CallbackQueryHandler, DeletedMessagesHandler,
-                InlineQueryHandler, MessageHandler]
+Handler = Union[
+    CallbackQueryHandler, DeletedMessagesHandler, InlineQueryHandler, MessageHandler
+]
 Update = Union[CallbackQuery, InlineQuery, List[Message], Message]
 
 
@@ -58,22 +60,25 @@ class TelegramBot(Base):
         string_session = self.getConfig["string_session"]
 
         if isinstance(string_session, str):
-            mode = string_session
+            mode = True
         else:
-            mode = ":memory:"
-        self.client = Client(api_id=api_id,
-                             api_hash=api_hash,
-                             session_name=mode)
+            mode = False
+
+        self.client = Client(
+            name="caligo",
+            api_id=api_id,
+            api_hash=api_hash,
+            session_string=string_session,
+        )
 
         bot_token = self.getConfig["bot_token"]
         if bot_token is not None:
             if not isinstance(bot_token, str):
                 raise TypeError("Bot token must be a string")
 
-            self.bot_client = Client(api_id=api_id,
-                                     api_hash=api_hash,
-                                     bot_token=bot_token,
-                                     session_name=":memory:")
+            self.bot_client = Client(
+                name="caligo", api_id=api_id, api_hash=api_hash, bot_token=bot_token
+            )
 
     async def start(self: "Bot") -> None:
         self.log.info("Starting")
@@ -84,22 +89,24 @@ class TelegramBot(Base):
         prefix = await db.find_one({"_id": "Core"})
         if prefix is None:
             self.prefix = "."  # Default is '.'-dot you can change later
-            await db.find_one_and_update({"_id": "Core"},
-                                         {"$set": {
-                                             "prefix": self.prefix
-                                         }},
-                                         upsert=True)
+            await db.find_one_and_update(
+                {"_id": "Core"}, {"$set": {"prefix": self.prefix}}, upsert=True
+            )
         else:
             self.prefix = prefix["prefix"]
 
         self.client.add_handler(
-            MessageHandler(self.on_command,
-                           filters=(self.command_predicate() & filters.me &
-                                    filters.outgoing)), 0)
+            MessageHandler(
+                self.on_command,
+                filters=(self.command_predicate() & filters.me & filters.outgoing),
+            ),
+            0,
+        )
 
         self.client.add_handler(
-            MessageHandler(self.on_conversation,
-                           filters=self.conversation_predicate()), 0)
+            MessageHandler(self.on_conversation, filters=self.conversation_predicate()),
+            0,
+        )
 
         # Load modules
         self.load_all_modules()
@@ -159,11 +166,13 @@ class TelegramBot(Base):
             if not self.stop_manual:
                 await self.stop()
 
-    def update_module_event(self: "Bot",
-                            name: str,
-                            event_type: Type[Handler],
-                            flt: Optional[filters.Filter] = None,
-                            group: int = 0) -> None:
+    def update_module_event(
+        self: "Bot",
+        name: str,
+        event_type: Type[Handler],
+        flt: Optional[filters.Filter] = None,
+        group: int = 0,
+    ) -> None:
         if name in self.listeners:
             if name not in self._mevent_handlers:
 
@@ -177,11 +186,13 @@ class TelegramBot(Base):
             self.client.remove_handler(*self._mevent_handlers[name])
             del self._mevent_handlers[name]
 
-    def update_bot_module_event(self: "Bot",
-                                name: str,
-                                event_type: Type[Handler],
-                                flt: Optional[filters.Filter] = None,
-                                group: int = 0) -> None:
+    def update_bot_module_event(
+        self: "Bot",
+        name: str,
+        event_type: Type[Handler],
+        flt: Optional[filters.Filter] = None,
+        group: int = 0,
+    ) -> None:
         if name in self.listeners:
             if name not in self._mevent_handlers:
 
@@ -196,8 +207,8 @@ class TelegramBot(Base):
             del self._mevent_handlers[name]
 
     def update_module_events(self: "Bot") -> None:
-        self.update_module_event("message", MessageHandler, ~filters.edited & ~chat_action())
-        self.update_module_event("message_edit", MessageHandler, filters.edited & ~chat_action())
+        self.update_module_event("message", MessageHandler, ~chat_action())
+        self.update_module_event("message_edit", MessageHandler, ~chat_action())
         self.update_module_event("message_delete", DeletedMessagesHandler)
         self.update_module_event("chat_action", MessageHandler, chat_action())
         if self.has_bot:
@@ -210,8 +221,7 @@ class TelegramBot(Base):
 
     @property
     def has_bot(self: "Bot") -> bool:
-        return hasattr(self, "bot_client") and isinstance(
-            self.bot_client, Client)
+        return hasattr(self, "bot_client") and isinstance(self.bot_client, Client)
 
     def redact_message(self: "Bot", text: str) -> str:
         redacted = "[REDACTED]"
@@ -278,6 +288,8 @@ class TelegramBot(Base):
 
         if mode == "edit":
             return await msg.edit(text=text, **kwargs)
+        if mode == "error":
+            return await msg.edit(text=f"**ERROR**: ```{text}```", **kwargs)
 
         if mode == "reply":
             if response is not None:
@@ -297,9 +309,7 @@ class TelegramBot(Base):
                 del kwargs["disable_web_page_preview"]
                 response = await msg.reply_document(**kwargs)
             else:
-                response = await msg.reply(text,
-                                           reply_to_message_id=msg.message_id,
-                                           **kwargs)
+                response = await msg.reply(text, reply_to_message_id=msg.id, **kwargs)
             await msg.delete()
             return response
 
