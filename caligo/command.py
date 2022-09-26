@@ -115,6 +115,7 @@ class Context:
         self.bot = bot
         self.chat = msg.chat
         self.msg = self.message = msg
+        self.reply_msg = msg.reply_to_message if msg.reply_to_message else None
         self.segments = segments
         self.cmd_len = cmd_len
         self.invoker = segments[0]
