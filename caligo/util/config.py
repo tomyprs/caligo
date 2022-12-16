@@ -4,10 +4,13 @@ from pathlib import Path
 from typing import Any, ClassVar, Iterator, MutableMapping, TypeVar
 
 from aiopath import AsyncPath
+from dotenv import load_dotenv
 
 _KT = TypeVar("_KT", bound=str, contravariant=True)
 _VT = TypeVar("_VT", covariant=True)
 
+if os.path.exists("config.env"):
+    load_dotenv("config.env")
 
 class TelegramConfig(MutableMapping[_KT, _VT]):
 
