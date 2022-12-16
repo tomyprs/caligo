@@ -11,6 +11,7 @@ from typing import Any, ClassVar, MutableMapping, Optional, Tuple
 import aiohttp
 import pyrogram
 import speedtest
+from html import escape
 from meval import meval
 
 from .. import command, module, util
@@ -140,9 +141,12 @@ class SystemModule(module.Module):
         out_buf = io.StringIO()
 
         async def _eval() -> Tuple[str, Optional[str]]:
+            # Message sending helper for convenience
             async def send(*args: Any, **kwargs: Any) -> pyrogram.types.Message:
                 return await ctx.msg.reply(*args, **kwargs)
 
+            # Print wrapper to capture output
+            # We don't override sys.stdout to avoid interfering with other output
             def _print(*args: Any, **kwargs: Any) -> None:
                 if "file" not in kwargs:
                     kwargs["file"] = out_buf
@@ -191,9 +195,7 @@ class SystemModule(module.Module):
                 first_snip_idx = -1
                 tb = traceback.extract_tb(e.__traceback__)
                 for i, frame in enumerate(tb):
-                    if frame.filename == "<string>" or frame.filename.endswith(
-                        "ast.py"
-                    ):
+                    if frame.filename == "<string>" or frame.filename.endswith("ast.py"):
                         first_snip_idx = i
                         break
 
@@ -222,13 +224,23 @@ class SystemModule(module.Module):
         if out.endswith("\n"):
             out = out[:-1]
 
-        return f"""{prefix}**In:**
-```{code}```
+        if len(out) > 4096:
+            with io.BytesIO(str.encode(out)) as out_file:
+                out_file.name = "eval.text"
+                await ctx.msg.reply_document(
+                    document=out_file, caption=code, disable_notification=True
+                )
 
-**Out:**
-```{out}```
+            return None
 
-Time: {el_str}"""
+        await ctx.respond(
+            f"""{prefix}<b>In:</b>
+<pre language="python">{escape(code)}</pre>
+<b>Out:</b>
+<pre language="python">{escape(out)}</pre>
+Time: {el_str}""",
+            parse_mode=pyrogram.enums.parse_mode.ParseMode.HTML,
+        )
 
     @command.desc("Stop this bot")
     async def cmd_stop(self, ctx: command.Context) -> None:
