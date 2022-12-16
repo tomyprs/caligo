@@ -1,12 +1,14 @@
+import asyncio
 from argparse import ArgumentParser, RawTextHelpFormatter
-from pyrogram import Client, asyncio
+from pyrogram import Client
 
 
 async def Session(mode: str) -> None:
-    async with Client(session_name=":memory:",
+    async with Client("caligo_gen",
                       api_id=input("Please enter Telegram API ID: "),
                       api_hash=input("Please enter Telegram API HASH: "),
-                      workdir='caligo') as caligo:
+                      workdir='caligo',
+                      in_memory=True) as caligo:
         print("Generating...")
         print()
         if mode == "stdout":
@@ -33,4 +35,4 @@ if __name__ == "__main__":
               "message: output session string into saved message"))
 
     args = parser.parse_args()
-    asyncio.get_event_loop().run_until_complete(Session(mode=args.mode))
+    asyncio.run(Session(mode=args.mode))
