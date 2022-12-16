@@ -195,8 +195,8 @@ class ModerationModule(module.Module):
         msg_ids = []
         purged = 0
         before = datetime.now()
-        for msg_id in range(ctx.msg.reply_to_message.message_id,
-                            ctx.msg.message_id):
+        for msg_id in range(ctx.msg.reply_to_message.id,
+                            ctx.msg.id):
             msg_ids.append(msg_id)
             if len(msg_ids) == 100:
                 await ctx.bot.client.delete_messages(

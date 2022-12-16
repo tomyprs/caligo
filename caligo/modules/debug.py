@@ -81,7 +81,7 @@ class DebugModule(module.Module):
         if ctx.msg.reply_to_message:
             reply_msg = ctx.msg.reply_to_message
             sender = reply_msg.from_user
-            lines.append(f"Message ID: `{reply_msg.message_id}`")
+            lines.append(f"Message ID: `{reply_msg.id}`")
 
             if sender:
                 lines.append(f"Message author ID: `{sender.id}`")

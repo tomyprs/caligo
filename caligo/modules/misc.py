@@ -86,13 +86,13 @@ class Misc(module.Module):
                                           str(file_path),
                                           force_document=True,
                                           progress=prog_func))
-        self.task.add((ctx.msg.message_id, task))
+        self.task.add((ctx.msg.id, task))
         try:
             await task
         except asyncio.CancelledError:
             return "__Transmission aborted.__"
         else:
-            self.task.remove((ctx.msg.message_id, task))
+            self.task.remove((ctx.msg.id, task))
 
         await ctx.msg.delete()
         return
@@ -109,7 +109,7 @@ class Misc(module.Module):
 
         if ctx.msg.reply_to_message:
             reply_msg = ctx.msg.reply_to_message
-            msg_id = reply_msg.message_id
+            msg_id = reply_msg.id
 
             i: Union[Tuple[int, asyncio.Task], None]
             j: Union[Tuple[int, asyncio.Task], None]

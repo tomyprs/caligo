@@ -439,7 +439,7 @@ class GoogleDrive(module.Module):
             return "__Replying to message only for aborting task__", 5
 
         if ctx.msg.reply_to_message:
-            reply_msg_id = ctx.msg.reply_to_message.message_id
+            reply_msg_id = ctx.msg.reply_to_message.id
             for msg_id, identifier in self.copy_tasks.copy():
                 if msg_id == reply_msg_id:
                     await self.cmd_gdremove(ctx, identifier=identifier)
@@ -470,14 +470,14 @@ class GoogleDrive(module.Module):
             counter = 0
             progress_string = ""
             last_update_time = None
-            self.cache[ctx.msg.message_id] = 0
+            self.cache[ctx.msg.id] = 0
 
-            self.copy_tasks.add((ctx.msg.message_id, content["id"]))
+            self.copy_tasks.add((ctx.msg.id, content["id"]))
             parentFolder = await self.createFolder(content["name"])
             async for task in self.copyFolder(target=content["id"],
                                               parent_id=parentFolder,
                                               name=content["name"],
-                                              msg_id=ctx.msg.message_id):
+                                              msg_id=ctx.msg.id):
                 try:
                     await task
                 except HttpError as e:
@@ -489,7 +489,7 @@ class GoogleDrive(module.Module):
                 else:
                     counter += 1
                     now = datetime.now()
-                    length = self.cache[ctx.msg.message_id]
+                    length = self.cache[ctx.msg.id]
                     percent = round(((counter / length) * 100), 2)
                     progress_string = (f"__Copying {content['name']}"
                                        f": [{counter}/{length}] {percent}%__")
@@ -499,9 +499,9 @@ class GoogleDrive(module.Module):
                         await ctx.respond(progress_string)
                         last_update_time = now
 
-            del self.cache[ctx.msg.message_id]
+            del self.cache[ctx.msg.id]
             if cancelled:
-                self.copy_tasks.remove((ctx.msg.message_id, content["id"]))
+                self.copy_tasks.remove((ctx.msg.id, content["id"]))
                 try:
                     await self.cmd_gdremove(ctx, identifier=parentFolder)
                 except Exception:  # skipcq: PYL-W0703
@@ -512,7 +512,7 @@ class GoogleDrive(module.Module):
             ret = await self.getInfo(parentFolder, ["webViewLink"])
         else:
             task = self.bot.loop.create_task(self.copyFile(content["id"]))
-            self.copy_tasks.add((ctx.msg.message_id, content["id"]))
+            self.copy_tasks.add((ctx.msg.id, content["id"]))
             try:
                 await task
             except asyncio.CancelledError:
@@ -521,7 +521,7 @@ class GoogleDrive(module.Module):
             file_id = task.result()
             ret = await self.getInfo(file_id, ["webViewLink"])
 
-        self.copy_tasks.remove((ctx.msg.message_id, content["id"]))
+        self.copy_tasks.remove((ctx.msg.id, content["id"]))
 
         return f"Copying success: [{content['name']}]({ret['webViewLink']})"
 
@@ -539,14 +539,14 @@ class GoogleDrive(module.Module):
             if reply_msg.media:
                 task = self.bot.loop.create_task(
                     self.downloadFile(ctx, reply_msg))
-                self.task.add((ctx.msg.message_id, task))
+                self.task.add((ctx.msg.id, task))
                 try:
                     await task
                 except asyncio.CancelledError:
                     return "__Transmission aborted.__"
                 else:
                     path = task.result()
-                    self.task.remove((ctx.msg.message_id, task))
+                    self.task.remove((ctx.msg.id, task))
                     if path is None:
                         return "__Something went wrong, file probably corrupt__"
 
@@ -557,13 +557,13 @@ class GoogleDrive(module.Module):
                     await self.uploadFile(file, msg=ctx.msg)
 
                     task = self.bot.loop.create_task(file.progress())
-                    self.task.add((ctx.msg.message_id, task))
+                    self.task.add((ctx.msg.id, task))
                     try:
                         await task
                     except asyncio.CancelledError:
                         return "__Transmission aborted.__"
                     else:
-                        self.task.remove((ctx.msg.message_id, task))
+                        self.task.remove((ctx.msg.id, task))
 
                     return
             elif reply_msg.text:

@@ -254,7 +254,7 @@ Time: {el_str}"""
             {
                 "$set": {
                     "restart.status_chat_id": resp_msg.chat.id,
-                    "restart.status_message_id": resp_msg.message_id,
+                    "restart.status_message_id": resp_msg.id,
                     "restart.time": restart_time or util.time.usec(),
                     "restart.reason": reason
                     }
@@ -359,7 +359,7 @@ Time: {el_str}"""
                     {
                        "$set": {
                            "restart.status_chat_id": resp_msg.chat.id,
-                           "restart.status_message_id": resp_msg.message_id,
+                           "restart.status_message_id": resp_msg.id,
                            "restart.time": update_time,
                            "restart.reason": "update"
                        }

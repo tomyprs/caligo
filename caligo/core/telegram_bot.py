@@ -302,7 +302,7 @@ class TelegramBot(Base):
                 response = await msg.reply_document(**kwargs)
             else:
                 response = await msg.reply(text,
-                                           reply_to_message_id=msg.message_id,
+                                           reply_to_message_id=msg.id,
                                            **kwargs)
             await msg.delete()
             return response
