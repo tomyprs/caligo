@@ -7,6 +7,7 @@ from pyrogram import Client, filters
 from pyrogram.handlers import (
     CallbackQueryHandler,
     DeletedMessagesHandler,
+    EditedMessageHandler,
     InlineQueryHandler,
     MessageHandler,
 )
@@ -58,22 +59,25 @@ class TelegramBot(Base):
         string_session = self.getConfig["string_session"]
 
         if isinstance(string_session, str):
-            mode = string_session
+            in_memory = False
         else:
-            mode = ":memory:"
-        self.client = Client(api_id=api_id,
+            in_memory = True
+        self.client = Client("caligo_user",
+                             api_id=api_id,
                              api_hash=api_hash,
-                             session_name=mode)
+                             session_string=string_session,
+                             in_memory=in_memory)
 
         bot_token = self.getConfig["bot_token"]
         if bot_token is not None:
             if not isinstance(bot_token, str):
                 raise TypeError("Bot token must be a string")
 
-            self.bot_client = Client(api_id=api_id,
+            self.bot_client = Client("caligo_bot",
+                                     api_id=api_id,
                                      api_hash=api_hash,
                                      bot_token=bot_token,
-                                     session_name=":memory:")
+                                     in_memory=True)
 
     async def start(self: "Bot") -> None:
         self.log.info("Starting")
@@ -196,8 +200,8 @@ class TelegramBot(Base):
             del self._mevent_handlers[name]
 
     def update_module_events(self: "Bot") -> None:
-        self.update_module_event("message", MessageHandler, ~filters.edited & ~chat_action())
-        self.update_module_event("message_edit", MessageHandler, filters.edited & ~chat_action())
+        self.update_module_event("message", MessageHandler, ~chat_action())
+        self.update_module_event("message_edit", EditedMessageHandler, ~chat_action())
         self.update_module_event("message_delete", DeletedMessagesHandler)
         self.update_module_event("chat_action", MessageHandler, chat_action())
         if self.has_bot:
@@ -239,7 +243,7 @@ class TelegramBot(Base):
                 text = text.replace(client_id, redacted)
             if client_secret in text:
                 text = text.replace(client_secret, redacted)
-        if string_session in text:
+        if string_session and string_session in text:
             text = text.replace(string_session, redacted)
 
         return text

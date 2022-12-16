@@ -30,7 +30,7 @@ class TelegramConfig(MutableMapping[_KT, _VT]):
             "heroku_api_key": os.environ.get("HEROKU_API_KEY"),
             "heroku_app_name": os.environ.get("HEROKU_APP"),
             "mirror_enabled": os.environ.get("MIRROR_MODULE") == "enable",
-            "string_session": os.environ.get("STRING_SESSION"),
+            "string_session": os.environ.get("STRING_SESSION",None),
         }
 
         for key, value in config.items():
