@@ -2,9 +2,9 @@ from contextlib import asynccontextmanager
 from typing import TYPE_CHECKING, Any, AsyncGenerator, Callable, Coroutine, MutableMapping, Optional
 
 from pymongo.client_session import ClientSession, SessionOptions
-from pymongo.monotonic import time as monotonic_time
 from pymongo.read_concern import ReadConcern
 from pymongo.write_concern import WriteConcern
+from time import monotonic as monotonic_time
 
 from .base import AsyncBase
 from .errors import OperationFailure, PyMongoError
