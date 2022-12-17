@@ -5,6 +5,7 @@ import re
 import io
 import sys
 import traceback
+import uuid
 from pathlib import Path
 from typing import Any, ClassVar, MutableMapping, Optional, Tuple
 
@@ -224,21 +225,24 @@ class SystemModule(module.Module):
         if out.endswith("\n"):
             out = out[:-1]
 
-        if len(out) > 4096:
-            with io.BytesIO(str.encode(out)) as out_file:
-                out_file.name = "eval.text"
-                await ctx.msg.reply_document(
-                    document=out_file, caption=code, disable_notification=True
-                )
-
-            return None
-
-        await ctx.respond(
-            f"""{prefix}<b>In:</b>
+        result = f"""{prefix}<b>In:</b>
 <pre language="python">{escape(code)}</pre>
 <b>Out:</b>
 <pre language="python">{escape(out)}</pre>
-Time: {el_str}""",
+Time: {el_str}"""
+
+        if len(result) > 4096:
+            with io.BytesIO(str.encode(out)) as out_file:
+                out_file.name = str(uuid.uuid4()).split("-")[0].upper() + ".TXT"
+                caption = f"""{prefix}<b>In:</b>
+<pre language="python">{escape(code)}</pre>"""
+                await ctx.msg.reply_document(
+                    document=out_file, caption=caption, disable_notification=True,parse_mode=pyrogram.enums.parse_mode.ParseMode.HTML
+                )
+            return None
+
+        await ctx.respond(
+            result,
             parse_mode=pyrogram.enums.parse_mode.ParseMode.HTML,
         )
 
