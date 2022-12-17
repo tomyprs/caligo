@@ -169,9 +169,17 @@ class CoreModule(module.Module):
             else:
                 await ctx.msg.delete()
 
-            res: Any = await self.bot.client.send_inline_bot_result(
-                ctx.msg.chat.id, response.query_id, response.results[1].id
-            )
+            if ctx.msg.is_topic_message:
+                res: Any = await self.bot.client.send_inline_bot_result(
+                    ctx.msg.chat.id,
+                    response.query_id,
+                    response.results[1].id,
+                    message_thread_id=ctx.msg.message_thread_id,
+                )
+            else:
+                res: Any = await self.bot.client.send_inline_bot_result(
+                    ctx.msg.chat.id, response.query_id, response.results[1].id
+                )
             self.cache[res.updates[0].id] = ctx.msg.chat.id
 
             return
