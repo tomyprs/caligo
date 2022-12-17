@@ -58,7 +58,7 @@ class TelegramBot(Base):
 
         string_session = self.getConfig["string_session"]
 
-        if isinstance(string_session, str):
+        if isinstance(string_session, str) or self.getConfig["use_session_file"]:
             in_memory = False
         else:
             in_memory = True
@@ -69,15 +69,21 @@ class TelegramBot(Base):
                              in_memory=in_memory)
 
         bot_token = self.getConfig["bot_token"]
-        if bot_token is not None:
-            if not isinstance(bot_token, str):
-                raise TypeError("Bot token must be a string")
+        bot_string_session = self.getConfig["string_session"]
+        if bot_token is not None or bot_string_session is not None:
+            if not isinstance(bot_token, str) and not isinstance(bot_string_session, str):
+                raise TypeError("Bot token or bot string session must be a string")
+
+            if isinstance(bot_string_session, str) or self.getConfig["use_session_file"]:
+                in_memory = False
+            else:
+                in_memory = True
 
             self.bot_client = Client("caligo_bot",
                                      api_id=api_id,
                                      api_hash=api_hash,
                                      bot_token=bot_token,
-                                     in_memory=True)
+                                     in_memory=in_memory)
 
     async def start(self: "Bot") -> None:
         self.log.info("Starting")
