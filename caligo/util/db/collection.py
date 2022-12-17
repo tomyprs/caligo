@@ -1,6 +1,6 @@
 from typing import Any, List, MutableMapping, Optional, Tuple, Union
 
-from bson import CodecOptions
+from bson.codec_options import CodecOptions
 from bson.son import SON
 from bson.timestamp import Timestamp
 from pymongo import IndexModel

@@ -11,8 +11,7 @@ from typing import (
     Union
 )
 
-from bson import CodecOptions
-from bson.codec_options import DEFAULT_CODEC_OPTIONS
+from bson.codec_options import CodecOptions, DEFAULT_CODEC_OPTIONS
 from bson.son import SON
 from bson.timestamp import Timestamp
 from pymongo import MongoClient

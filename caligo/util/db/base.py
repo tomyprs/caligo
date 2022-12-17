@@ -1,6 +1,6 @@
 from typing import TYPE_CHECKING, Any, Union
 
-from bson import CodecOptions
+from bson.codec_options import CodecOptions
 from pymongo import MongoClient
 from pymongo.client_session import ClientSession
 from pymongo.collection import Collection

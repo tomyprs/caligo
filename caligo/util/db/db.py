@@ -1,6 +1,7 @@
 from typing import TYPE_CHECKING, Any, List, MutableMapping, Optional, Union
 
-from bson import DBRef, CodecOptions
+from bson.codec_options import CodecOptions
+from bson.dbref import DBRef
 from bson.son import SON
 from bson.timestamp import Timestamp
 from pymongo.collation import Collation
