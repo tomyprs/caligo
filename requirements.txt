@@ -1,7 +1,7 @@
 aioaria2
 aiofile
 aiofiles
-aiohttp=
+aiohttp
 aiopath
 aiorun
 aiosignal
@@ -51,7 +51,7 @@ pyrogram
 pysocks
 python-dotenv
 requests-oauthlib
-requests==2.28.1
+requests
 rsa
 six
 smmap
@@ -64,5 +64,6 @@ typing-extensions
 ujson
 uritemplate
 urllib3
+uvloop
 websockets
 yarl
