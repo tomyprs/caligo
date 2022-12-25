@@ -1,11 +1,12 @@
 import asyncio
-import os
 import inspect
-import re
 import io
+import os
+import re
 import sys
 import traceback
 import uuid
+from html import escape
 from pathlib import Path
 from typing import Any, ClassVar, MutableMapping, Optional, Tuple
 
@@ -235,7 +236,10 @@ Time: {el_str}"""
                 caption = f"""{prefix}<b>In:</b>
 <pre language="python">{escape(code)}</pre>"""
                 await ctx.msg.reply_document(
-                    document=out_file, caption=caption, disable_notification=True,parse_mode=pyrogram.enums.parse_mode.ParseMode.HTML
+                    document=out_file,
+                    caption=caption,
+                    disable_notification=True,
+                    parse_mode=pyrogram.enums.parse_mode.ParseMode.HTML,
                 )
             return None
 
@@ -270,10 +274,10 @@ Time: {el_str}"""
                     "restart.status_chat_id": resp_msg.chat.id,
                     "restart.status_message_id": resp_msg.id,
                     "restart.time": restart_time or util.time.usec(),
-                    "restart.reason": reason
-                    }
+                    "restart.reason": reason,
+                }
             },
-            upsert=True
+            upsert=True,
         )
         # Initiate the restart
         self.restart_pending = True
@@ -307,7 +311,8 @@ Time: {el_str}"""
             self.log.info(f"Bot {updated}restarted in {duration}")
             status_msg = await self.bot.client.get_messages(rs_chat_id, rs_message_id)
             await self.bot.respond(
-                status_msg, f"Bot {updated}restarted in {duration}.", mode="repost")
+                status_msg, f"Bot {updated}restarted in {duration}.", mode="repost"
+            )
 
     async def on_stopped(self) -> None:
         if self.restart_pending:
@@ -327,10 +332,7 @@ Time: {el_str}"""
         auth = aiohttp.BasicAuth(user, self.bot.getConfig["github_token"])
 
         async with self.bot.http.post(
-            uri + path,
-            auth=auth,
-            headers=headers,
-            json=payload
+            uri + path, auth=auth, headers=headers, json=payload
         ) as resp:
             return resp.status
 
@@ -360,10 +362,12 @@ Time: {el_str}"""
             if not self.bot.getConfig["container"]:
                 return "__Deploying only works if your bot is run on container.__"
 
-            if (self.bot.getConfig["github_token"] and
-                    self.bot.getConfig["github_repo"]) and (
-                    self.bot.getConfig["heroku_api_key"] and
-                    self.bot.getConfig["heroku_app_name"]):
+            if (
+                self.bot.getConfig["github_token"] and self.bot.getConfig["github_repo"]
+            ) and (
+                self.bot.getConfig["heroku_api_key"]
+                and self.bot.getConfig["heroku_app_name"]
+            ):
                 ret = await self.run_workflows()
 
                 resp_msg = await ctx.respond("Deploying bot...")
@@ -371,14 +375,14 @@ Time: {el_str}"""
                 await self.db.find_one_and_update(
                     {"_id": self.name},
                     {
-                       "$set": {
-                           "restart.status_chat_id": resp_msg.chat.id,
-                           "restart.status_message_id": resp_msg.id,
-                           "restart.time": update_time,
-                           "restart.reason": "update"
-                       }
+                        "$set": {
+                            "restart.status_chat_id": resp_msg.chat.id,
+                            "restart.status_message_id": resp_msg.id,
+                            "restart.time": update_time,
+                            "restart.reason": "update",
+                        }
                     },
-                    upsert=True
+                    upsert=True,
                 )
                 return
 
