@@ -3,7 +3,7 @@ from typing import ClassVar, Optional
 
 import aiohttp
 from aiohttp.client_exceptions import ClientConnectorError
-from pyrogram.errors import UsernameInvalid, PeerIdInvalid
+from pyrogram.errors import PeerIdInvalid, UsernameInvalid
 
 from .. import command, module, util
 
@@ -95,13 +95,11 @@ class DebugModule(module.Module):
             if reply_msg.forward_from_chat:
                 f_chat = reply_msg.forward_from_chat
 
-                lines.append(
-                    f"Forwarded message {f_chat.type} ID: `{f_chat.id}`"
-                )
+                lines.append(f"Forwarded message {f_chat.type} ID: `{f_chat.id}`")
 
             f_msg_id = None
-            if reply_msg.forward_from_message.id:
-                f_msg_id = reply_msg.forward_from_message.id
+            if reply_msg.forward_from:
+                f_msg_id = reply_msg.forward_from.id
                 lines.append(f"Forwarded message original ID: `{f_msg_id}`")
 
             if f_chat is not None and f_msg_id is not None:
@@ -117,8 +115,11 @@ class DebugModule(module.Module):
                         f"(https://t.me/{f_chat.id}/{f_msg_id})"
                     )
 
-        text = util.tg.pretty_print_entity(
-            lines).replace("'", "").replace("list", "**List**")
+        text = (
+            util.tg.pretty_print_entity(lines)
+            .replace("'", "")
+            .replace("list", "**List**")
+        )
         await ctx.respond(text, disable_web_page_preview=True)
 
     @command.desc("Paste message text to Dogbin")
@@ -139,11 +140,15 @@ class DebugModule(module.Module):
         await ctx.respond("Uploading text to [Dogbin](https://del.dog/)...")
 
         try:
-            async with self.bot.http.post("https://del.dog/documents", data=text) as resp:
+            async with self.bot.http.post(
+                "https://del.dog/documents", data=text
+            ) as resp:
                 try:
                     resp_data = await resp.json()
                 except aiohttp.ContentTypeError:
-                    return "__Dogbin is currently experiencing issues. Try again later.__"
+                    return (
+                        "__Dogbin is currently experiencing issues. Try again later.__"
+                    )
 
                 return f'https://del.dog/{resp_data["key"]}'
         except ClientConnectorError:
