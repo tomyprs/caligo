@@ -82,7 +82,6 @@ class TelegramBot(Base):
                 api_id=api_id,
                 api_hash=api_hash,
                 bot_token=bot_token,
-                in_memory=True,
             )
 
     async def start(self: "Bot") -> None:
