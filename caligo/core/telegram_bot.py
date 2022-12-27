@@ -69,6 +69,7 @@ class TelegramBot(Base):
             api_id=api_id,
             api_hash=api_hash,
             session_string=string_session,
+            in_memory=True,
         )
 
         bot_token = self.getConfig["bot_token"]
@@ -77,7 +78,11 @@ class TelegramBot(Base):
                 raise TypeError("Bot token must be a string")
 
             self.bot_client = Client(
-                name="caligo", api_id=api_id, api_hash=api_hash, bot_token=bot_token
+                name="caligo",
+                api_id=api_id,
+                api_hash=api_hash,
+                bot_token=bot_token,
+                in_memory=True,
             )
 
     async def start(self: "Bot") -> None:
