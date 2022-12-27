@@ -3,7 +3,18 @@ import base64
 import pickle
 import re
 from datetime import datetime, timedelta
-from typing import Any, AsyncIterator, ClassVar, Dict, Iterable, List, Optional, Set, Tuple, Union
+from typing import (
+    Any,
+    AsyncIterator,
+    ClassVar,
+    Dict,
+    Iterable,
+    List,
+    Optional,
+    Set,
+    Tuple,
+    Union,
+)
 
 import aiofile
 import pyrogram
@@ -11,7 +22,7 @@ from aiopath import AsyncPath
 from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import InstalledAppFlow
-from googleapiclient.discovery import build, Resource
+from googleapiclient.discovery import Resource, build
 from googleapiclient.errors import HttpError
 from googleapiclient.http import MediaFileUpload
 from oauthlib.oauth2.rfc6749.errors import InvalidGrantError
@@ -41,13 +52,17 @@ MIME_TYPE = {
     "image/jpeg": "🖼️",
     "image/png": "🖼️",
     "video/mp4": "🎥️",
-    "video/x-matroska": "🎥️"
+    "video/x-matroska": "🎥️",
 }
-PATTERN = re.compile(r"(?<=/folders/)([\w-]+)|(?<=%2Ffolders%2F)([\w-]+)|"
-                     r"(?<=/file/d/)([\w-]+)|(?<=%2Ffile%2Fd%2F)([\w-]+)|"
-                     r"(?<=id=)([\w-]+)|(?<=id%3D)([\w-]+)")
-DOMAIN = re.compile(r"https?:\/\/(?:www\.|:?www\d+\.|(?!www))"
-                    r"([a-zA-Z0-9][a-zA-Z0-9-]+[a-zA-Z0-9])\.[^\s]{2,}")
+PATTERN = re.compile(
+    r"(?<=/folders/)([\w-]+)|(?<=%2Ffolders%2F)([\w-]+)|"
+    r"(?<=/file/d/)([\w-]+)|(?<=%2Ffile%2Fd%2F)([\w-]+)|"
+    r"(?<=id=)([\w-]+)|(?<=id%3D)([\w-]+)"
+)
+DOMAIN = re.compile(
+    r"https?:\/\/(?:www\.|:?www\d+\.|(?!www))"
+    r"([a-zA-Z0-9][a-zA-Z0-9-]+[a-zA-Z0-9])\.[^\s]{2,}"
+)
 
 
 def getIdFromUrl(url: Optional[str]) -> Optional[str]:
@@ -98,44 +113,45 @@ class GoogleDrive(module.Module):
             self.aria2 = self.bot.modules["Aria2"]
             self.creds = await util.run_sync(pickle.loads, creds)
             # service will be overwrite if credentials is expired
-            self.service = await util.run_sync(build,
-                                               "drive",
-                                               "v3",
-                                               credentials=self.creds,
-                                               cache_discovery=False)
+            self.service = await util.run_sync(
+                build, "drive", "v3", credentials=self.creds, cache_discovery=False
+            )
 
     async def on_start(self, _: int) -> None:
         self.getDirectLink = util.aria2.DirectLinks(self.bot.http)
 
     @command.desc("Check your GoogleDrive credentials")
     @command.alias("gdauth")
-    async def cmd_gdcheck(self, ctx: command.Context  # skipcq: PYL-W0613
-                          ) -> Tuple[str, int]:
+    async def cmd_gdcheck(
+        self, ctx: command.Context  # skipcq: PYL-W0613
+    ) -> Tuple[str, int]:
         return "You are all set.", 5
 
     @command.desc("Clear/Reset your GoogleDrive credentials")
     @command.alias("gdreset")
-    async def cmd_gdclear(self, ctx: command.Context) -> Optional[Tuple[str,
-                                                                        int]]:
+    async def cmd_gdclear(self, ctx: command.Context) -> Optional[Tuple[str, int]]:
         if not self.creds:
             return "__Credentials already empty.__", 5
 
         await self.db.delete_one({"_id": self.name})
-        await asyncio.gather(self.on_load(),
-                             ctx.respond("__Credentials cleared.__"))
+        await asyncio.gather(self.on_load(), ctx.respond("__Credentials cleared.__"))
 
     async def getAccessToken(self, message: pyrogram.types.Message) -> str:
         flow = InstalledAppFlow.from_client_config(
-            self.configs, ["https://www.googleapis.com/auth/drive"],
-            redirect_uri=self.configs["installed"]["redirect_uris"][0])
-        auth_url, _ = flow.authorization_url(access_type="offline",
-                                             prompt="consent")
+            self.configs,
+            ["https://www.googleapis.com/auth/drive"],
+            redirect_uri=self.configs["installed"]["redirect_uris"][0],
+        )
+        auth_url, _ = flow.authorization_url(access_type="offline", prompt="consent")
 
         await self.bot.respond(message, "Check your **Log channel.**")
-        async with self.bot.conversation(self.bot.getConfig["log_channel"], timeout=60) as conv:
+        async with self.bot.conversation(
+            self.bot.getConfig["log_channel"], timeout=60
+        ) as conv:
             request = await conv.send_message(
                 f"Please visit the link:\n{auth_url}\n"
-                "And reply the token here.\n**You have 60 seconds**.")
+                "And reply the token here.\n**You have 60 seconds**."
+            )
 
             try:
                 response = await conv.get_response()
@@ -147,27 +163,29 @@ class GoogleDrive(module.Module):
         token = response.text
 
         try:
-            await asyncio.gather(request.delete(), response.delete(),
-                                 util.run_sync(flow.fetch_token, code=token))
+            await asyncio.gather(
+                request.delete(),
+                response.delete(),
+                util.run_sync(flow.fetch_token, code=token),
+            )
         except InvalidGrantError:
-            return ("⚠️ **Error fetching token**\n\n"
-                    "__Refresh token is invalid, expired, revoked, "
-                    "or does not match the redirection URI.__")
+            return (
+                "⚠️ **Error fetching token**\n\n"
+                "__Refresh token is invalid, expired, revoked, "
+                "or does not match the redirection URI.__"
+            )
 
         self.creds = flow.credentials
         credential = await util.run_sync(pickle.dumps, self.creds)
 
-        await self.db.find_one_and_update({"_id": self.name},
-                                          {"$set": {
-                                              "creds": credential
-                                          }},
-                                          upsert=True)
+        await self.db.find_one_and_update(
+            {"_id": self.name}, {"$set": {"creds": credential}}, upsert=True
+        )
         await self.on_load()
 
         return "Credentials created."
 
-    async def authorize(self,
-                        message: pyrogram.types.Message) -> Optional[bool]:
+    async def authorize(self, message: pyrogram.types.Message) -> Optional[bool]:
         if not self.creds or not self.creds.valid:
             if self.creds and self.creds.expired and self.creds.refresh_token:
                 self.log.info("Refreshing credentials")
@@ -175,14 +193,13 @@ class GoogleDrive(module.Module):
 
                 credential = await util.run_sync(pickle.dumps, self.creds)
                 await self.db.find_one_and_update(
-                    {"_id": self.name}, {"$set": {
-                        "creds": credential
-                    }})
+                    {"_id": self.name}, {"$set": {"creds": credential}}
+                )
             else:
                 await asyncio.gather(
-                    self.bot.respond(message,
-                                     "Credential is empty, generating..."),
-                    asyncio.sleep(2.5))
+                    self.bot.respond(message, "Credential is empty, generating..."),
+                    asyncio.sleep(2.5),
+                )
 
                 ret = await self.getAccessToken(message)
 
@@ -192,12 +209,14 @@ class GoogleDrive(module.Module):
 
             await self.on_load()
 
-    async def getInfo(self, identifier: str,
-                      fields: Iterable[str]) -> Dict[str, Any]:
+    async def getInfo(self, identifier: str, fields: Iterable[str]) -> Dict[str, Any]:
         fields = ", ".join(fields)
 
-        return await util.run_sync(self.service.files().get(
-            fileId=identifier, fields=fields, supportsAllDrives=True).execute)
+        return await util.run_sync(
+            self.service.files()
+            .get(fileId=identifier, fields=fields, supportsAllDrives=True)
+            .execute
+        )
 
     async def copyFile(self, file_id: str, parent_id: Optional[str] = None) -> str:
         metadata = {}
@@ -206,13 +225,21 @@ class GoogleDrive(module.Module):
         elif parent_id is None and self.parent_id is not None:
             metadata["parents"] = [self.parent_id]
 
-        file = await util.run_sync(self.service.files().copy(
-            body=metadata, fileId=file_id, supportsAllDrives=True).execute)
+        file = await util.run_sync(
+            self.service.files()
+            .copy(body=metadata, fileId=file_id, supportsAllDrives=True)
+            .execute
+        )
         return file["id"]
 
-    async def copyFolder(self, target: str, *, parent_id: Optional[str] = None,
-                         name: Optional[str] = None, msg_id: Optional[int] = None
-                         ) -> AsyncIterator[asyncio.Task]:
+    async def copyFolder(
+        self,
+        target: str,
+        *,
+        parent_id: Optional[str] = None,
+        name: Optional[str] = None,
+        msg_id: Optional[int] = None,
+    ) -> AsyncIterator[asyncio.Task]:
         query = f"'{target}' in parents"
 
         async for contents in self.searchContent(query=query, limit=1000):
@@ -224,33 +251,39 @@ class GoogleDrive(module.Module):
                     # Dont count folder
                     if msg_id is not None:
                         self.cache[msg_id] -= 1
-                    childFolder = await self.createFolder(content["name"],
-                                                          folderId=parent_id)
-                    async for task in self.copyFolder(target=content["id"],
-                                                      parent_id=childFolder,
-                                                      name=name, msg_id=msg_id):
+                    childFolder = await self.createFolder(
+                        content["name"], folderId=parent_id
+                    )
+                    async for task in self.copyFolder(
+                        target=content["id"],
+                        parent_id=childFolder,
+                        name=name,
+                        msg_id=msg_id,
+                    ):
                         yield task
                 else:
-                    yield self.bot.loop.create_task(self.copyFile(
-                                                    content["id"],
-                                                    parent_id=parent_id),
-                                                    name=name)
+                    yield self.bot.loop.create_task(
+                        self.copyFile(content["id"], parent_id=parent_id), name=name
+                    )
                     await asyncio.sleep(0.5)
 
-    async def createFolder(self,
-                           folderName: str,
-                           folderId: Optional[str] = None) -> str:
+    async def createFolder(
+        self, folderName: str, folderId: Optional[str] = None
+    ) -> str:
         folder_metadata: Dict[str, Any] = {
             "name": folderName,
-            "mimeType": "application/vnd.google-apps.folder"
+            "mimeType": "application/vnd.google-apps.folder",
         }
         if folderId is not None:
             folder_metadata["parents"] = [folderId]
         elif folderId is None and self.parent_id is not None:
             folder_metadata["parents"] = [self.parent_id]
 
-        folder = await util.run_sync(self.service.files().create(
-            body=folder_metadata, fields="id", supportsAllDrives=True).execute)
+        folder = await util.run_sync(
+            self.service.files()
+            .create(body=folder_metadata, fields="id", supportsAllDrives=True)
+            .execute
+        )
         return folder["id"]
 
     async def uploadFolder(
@@ -259,15 +292,14 @@ class GoogleDrive(module.Module):
         *,
         gid: Optional[str] = None,
         parent_id: Optional[str] = None,
-        msg: Optional[pyrogram.types.Message] = None
+        msg: Optional[pyrogram.types.Message] = None,
     ) -> AsyncIterator[asyncio.Task[None]]:
         async for content in sourceFolder.iterdir():
             if await content.is_dir():
                 childFolder = await self.createFolder(content.name, parent_id)
-                async for task in self.uploadFolder(content,
-                                                    gid=gid,
-                                                    parent_id=childFolder,
-                                                    msg=msg):
+                async for task in self.uploadFolder(
+                    content, gid=gid, parent_id=childFolder, msg=msg
+                ):
                     yield task
             elif await content.is_file():
                 file = util.File(content)
@@ -275,17 +307,17 @@ class GoogleDrive(module.Module):
                 if isinstance(content, str):  # Skip because file size is 0
                     continue
 
-                yield self.bot.loop.create_task(file.progress(update=False),
-                                                name=gid)
+                yield self.bot.loop.create_task(file.progress(update=False), name=gid)
                 await asyncio.sleep(0.5)
             else:
                 raise ValueError(f"{content} is not a file or folder")
 
-    async def uploadFile(self,
-                         file: Union[util.File, util.aria2.Download],
-                         parent_id: Optional[str] = None,
-                         msg: Optional[pyrogram.types.Message] = None
-                         ) -> Union[MediaFileUpload, str]:
+    async def uploadFile(
+        self,
+        file: Union[util.File, util.aria2.Download],
+        parent_id: Optional[str] = None,
+        msg: Optional[pyrogram.types.Message] = None,
+    ) -> Union[MediaFileUpload, str]:
         body: Dict[str, Any] = {"name": file.name, "mimeType": file.mime_type}
         if parent_id is not None:
             body["parents"] = [parent_id]
@@ -293,32 +325,46 @@ class GoogleDrive(module.Module):
             body["parents"] = [self.parent_id]
 
         if (await file.path.stat()).st_size > 0:
-            media_body = MediaFileUpload(file.path,
-                                         mimetype=file.mime_type,
-                                         resumable=True,
-                                         chunksize=50 * 1024 * 1024)
-            content = await util.run_sync(self.service.files().create,
-                                          body=body,
-                                          media_body=media_body,
-                                          fields="id, size, webContentLink",
-                                          supportsAllDrives=True)
-        else:
-            media_body = MediaFileUpload(file.path, mimetype=file.mime_type)
-            content = await util.run_sync(self.service.files().create(
+            media_body = MediaFileUpload(
+                file.path,
+                mimetype=file.mime_type,
+                resumable=True,
+                chunksize=50 * 1024 * 1024,
+            )
+            content = await util.run_sync(
+                self.service.files().create,
                 body=body,
                 media_body=media_body,
                 fields="id, size, webContentLink",
-                supportsAllDrives=True).execute)
+                supportsAllDrives=True,
+            )
+        else:
+            media_body = MediaFileUpload(file.path, mimetype=file.mime_type)
+            content = await util.run_sync(
+                self.service.files()
+                .create(
+                    body=body,
+                    media_body=media_body,
+                    fields="id, size, webContentLink",
+                    supportsAllDrives=True,
+                )
+                .execute
+            )
 
             return content.get("id")
 
         if isinstance(file, util.aria2.Download):
-            content.gid, content.name, content.start_time = (file.gid, file.name,
-                                                             util.time.sec())
+            content.gid, content.name, content.start_time = (
+                file.gid,
+                file.name,
+                util.time.sec(),
+            )
         elif isinstance(file, util.File):
-            file.content, file.start_time, file.invoker = (content,
-                                                           util.time.sec(),
-                                                           msg)
+            file.content, file.start_time, file.invoker = (
+                content,
+                util.time.sec(),
+                msg,
+            )
             if self.index_link is not None:
                 file.index_link = self.index_link
 
@@ -367,24 +413,27 @@ class GoogleDrive(module.Module):
             if len(bullets) > 10:
                 bullets = bullets.replace("○", "")
 
-            space = '    ' * (10 - len(bullets))
+            space = "    " * (10 - len(bullets))
             progress = (
                 f"`{file_name}`\n"
                 f"Status: **Downloading**\n"
                 f"Progress: [{bullets + space}] {round(percent * 100)}%\n"
                 f"__{human(current)} of {human(total)} @ "
-                f"{human(speed, postfix='/s')}\neta - {time(eta)}__\n\n")
+                f"{human(speed, postfix='/s')}\neta - {time(eta)}__\n\n"
+            )
             # Only edit message once every 5 seconds to avoid ratelimits
-            if last_update_time is None or (
-                    now - last_update_time).total_seconds() >= 5:
+            if (
+                last_update_time is None
+                or (now - last_update_time).total_seconds() >= 5
+            ):
                 self.bot.loop.create_task(ctx.respond(progress))
 
                 last_update_time = now
 
         file_path = download_path / file_name
-        file_path = await ctx.bot.client.download_media(msg,
-                                                        file_name=file_path,
-                                                        progress=prog_func)
+        file_path = await ctx.bot.client.download_media(
+            msg, file_name=file_path, progress=prog_func
+        )
 
         return AsyncPath(file_path) if file_path is not None else file_path
 
@@ -395,16 +444,21 @@ class GoogleDrive(module.Module):
         pageToken = None
 
         while True:
-            response = await util.run_sync(self.service.files().list(
-                supportsAllDrives=True,
-                includeItemsFromAllDrives=True,
-                q=query,
-                spaces="drive",
-                corpora="allDrives",
-                fields=fields,
-                pageSize=limit,
-                orderBy="folder, modifiedTime desc, name asc",
-                pageToken=pageToken).execute)
+            response = await util.run_sync(
+                self.service.files()
+                .list(
+                    supportsAllDrives=True,
+                    includeItemsFromAllDrives=True,
+                    q=query,
+                    spaces="drive",
+                    corpora="allDrives",
+                    fields=fields,
+                    pageSize=limit,
+                    orderBy="folder, modifiedTime desc, name asc",
+                    pageToken=pageToken,
+                )
+                .execute
+            )
 
             yield response.get("files", [])
 
@@ -415,24 +469,26 @@ class GoogleDrive(module.Module):
     @command.desc("Delete your GoogleDrive file/folder")
     @command.usage("[file id or folder id]")
     @command.alias("gdrm", "gddel", "gddelete")
-    async def cmd_gdremove(self, ctx: command.Context, *,
-                           identifier: Optional[str] = None
-                           ) -> Union[str, Tuple[str, int]]:
+    async def cmd_gdremove(
+        self, ctx: command.Context, *, identifier: Optional[str] = None
+    ) -> Union[str, Tuple[str, int]]:
         if not ctx.input and not identifier:
             return "__Pass the id of content to delete it__", 5
         if ctx.input and not identifier:
             identifier = getIdFromUrl(ctx.input)
 
-        await util.run_sync(self.service.files().delete(
-                            fileId=identifier, supportsAllDrives=True).execute)
+        await util.run_sync(
+            self.service.files()
+            .delete(fileId=identifier, supportsAllDrives=True)
+            .execute
+        )
 
         return f"__Deleted:__ `{identifier}`"
 
     @command.desc("Copy public GoogleDrive folder/file into your own")
     @command.usage("[file id or folder id]")
     @command.alias("gdcp")
-    async def cmd_gdcopy(self, ctx: command.Context) -> Union[str,
-                                                              Tuple[str, int]]:
+    async def cmd_gdcopy(self, ctx: command.Context) -> Union[str, Tuple[str, int]]:
         if not ctx.input and not ctx.msg.reply_to_message:
             return "__Input the id of the file/folder or reply with abort__", 5
         if ctx.msg.reply_to_message and ctx.input != "abort":
@@ -474,10 +530,12 @@ class GoogleDrive(module.Module):
 
             self.copy_tasks.add((ctx.msg.id, content["id"]))
             parentFolder = await self.createFolder(content["name"])
-            async for task in self.copyFolder(target=content["id"],
-                                              parent_id=parentFolder,
-                                              name=content["name"],
-                                              msg_id=ctx.msg.id):
+            async for task in self.copyFolder(
+                target=content["id"],
+                parent_id=parentFolder,
+                name=content["name"],
+                msg_id=ctx.msg.id,
+            ):
                 try:
                     await task
                 except HttpError as e:
@@ -489,13 +547,17 @@ class GoogleDrive(module.Module):
                 else:
                     counter += 1
                     now = datetime.now()
-                    length = self.cache[ctx.msg.i]
+                    length = self.cache[ctx.msg.id]
                     percent = round(((counter / length) * 100), 2)
-                    progress_string = (f"__Copying {content['name']}"
-                                       f": [{counter}/{length}] {percent}%__")
-                    if last_update_time is None or (now - last_update_time
-                                                    ).total_seconds() >= 5 and (
-                                                    progress_string != ""):
+                    progress_string = (
+                        f"__Copying {content['name']}"
+                        f": [{counter}/{length}] {percent}%__"
+                    )
+                    if (
+                        last_update_time is None
+                        or (now - last_update_time).total_seconds() >= 5
+                        and (progress_string != "")
+                    ):
                         await ctx.respond(progress_string)
                         last_update_time = now
 
@@ -537,8 +599,7 @@ class GoogleDrive(module.Module):
             reply_msg = ctx.msg.reply_to_message
 
             if reply_msg.media:
-                task = self.bot.loop.create_task(
-                    self.downloadFile(ctx, reply_msg))
+                task = self.bot.loop.create_task(self.downloadFile(ctx, reply_msg))
                 self.task.add((ctx.msg.id, task))
                 try:
                     await task
@@ -587,19 +648,22 @@ class GoogleDrive(module.Module):
                         for index, mirror in enumerate(direct):
                             text += f"`{index + 1}`. {mirror['name']}\n"
                         text += "\nSend only the number here."
-                        async with self.bot.conversation(ctx.msg.chat.id,
-                                                         timeout=60) as conv:
+                        async with self.bot.conversation(
+                            ctx.msg.chat.id, timeout=60
+                        ) as conv:
                             request = await conv.send_message(text)
 
                             try:
                                 response = await conv.get_response(
-                                    filters=pyrogram.filters.me)
+                                    filters=pyrogram.filters.me
+                                )
                             except asyncio.TimeoutError:
                                 await request.delete()
                                 types = direct[0]["url"]
                             else:
-                                await asyncio.gather(request.delete(),
-                                                     response.delete())
+                                await asyncio.gather(
+                                    request.delete(), response.delete()
+                                )
                                 index = int(response.text) - 1
                                 types = direct[index]["url"]
                 elif direct is not None:
@@ -611,19 +675,22 @@ class GoogleDrive(module.Module):
         except NameError:
             return "__Mirroring torrent file/url needs Aria2 loaded.__"
 
-    @command.pattern(r"(parent)=(\"(?:[^\"\\]|\\.)*\"|'(?:[^'\\]|\\.)*')|"
-                     r"(limit)=(\d+)|(filter)=(file|folder)|"
-                     r"(name)=(\"(?:[^\"\\]|\\.)*\"|'(?:[^'\\]|\\.)*')|"
-                     r"(q)=(\"(?:[^\"\\]|\\.)*\"|'(?:[^'\\]|\\.)*')")
-    @command.usage("[parent=\"folderId\"] [name=\"file/folder name\"] "
-                   "[limit=number] [filter=file/folder]"
-                   "[q=\"search query\"], **single/double quote important for "
-                   "parent, name and q parameters**",
-                   optional=True)
+    @command.pattern(
+        r"(parent)=(\"(?:[^\"\\]|\\.)*\"|'(?:[^'\\]|\\.)*')|"
+        r"(limit)=(\d+)|(filter)=(file|folder)|"
+        r"(name)=(\"(?:[^\"\\]|\\.)*\"|'(?:[^'\\]|\\.)*')|"
+        r"(q)=(\"(?:[^\"\\]|\\.)*\"|'(?:[^'\\]|\\.)*')"
+    )
+    @command.usage(
+        '[parent="folderId"] [name="file/folder name"] '
+        "[limit=number] [filter=file/folder]"
+        '[q="search query"], **single/double quote important for '
+        "parent, name and q parameters**",
+        optional=True,
+    )
     @command.desc("Search through all Google Drive by given query/parent/name")
     @command.alias("gdlist", "gdls")
-    async def cmd_gdsearch(self,
-                           ctx: command.Context) -> Union[str, Tuple[str, int]]:
+    async def cmd_gdsearch(self, ctx: command.Context) -> Union[str, Tuple[str, int]]:
         if ctx.input and not ctx.matches:
             return "__Invalid parameters of input.__", 5
 
@@ -638,8 +705,9 @@ class GoogleDrive(module.Module):
 
                     # Remove quote/double quote and override
                     if option not in ("limit", "filter"):
-                        options[option] = match.removesuffix(
-                            match[0]).removeprefix(match[0])
+                        options[option] = match.removesuffix(match[0]).removeprefix(
+                            match[0]
+                        )
 
                     break
 
@@ -692,8 +760,9 @@ class GoogleDrive(module.Module):
 
                     count += 1
                     output += (
-                        MIME_TYPE.get(content["mimeType"], "📄") +
-                        f" [{content['name']}]({content['webViewLink']})\n")
+                        MIME_TYPE.get(content["mimeType"], "📄")
+                        + f" [{content['name']}]({content['webViewLink']})\n"
+                    )
 
                 if count >= limit:
                     break
