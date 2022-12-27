@@ -159,8 +159,8 @@ class DebugModule(module.Module):
     @command.alias("log")
     async def cmd_getlog(self, ctx: command.Context):
         log_file = AsyncPath("caligo.log")
-        await ctx.respond("__Grabing log..__")
+        await ctx.respond("__Grabing log...__")
         await self.bot.client.send_document(
-            ctx.chat.id, str(log_file), force_document=True
+            self.bot.getConfig["log_channel"], str(log_file), force_document=True
         )
-        return await ctx.msg.delete()
+        return await ctx.respond("__I sent logs to your logging channel!__")
