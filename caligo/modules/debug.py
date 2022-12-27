@@ -156,7 +156,7 @@ class DebugModule(module.Module):
             return "__Dogbin is currently experiencing issues. Try again later.__"
 
     @command.desc("Get Caligo loging")
-    @command.alias("getlog", "log")
+    @command.alias("log")
     async def cmd_getlog(self, ctx: command.Context):
         log_file = AsyncPath("caligo.log")
         await ctx.respond("__Grabing log..__")
