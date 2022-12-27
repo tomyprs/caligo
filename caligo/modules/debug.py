@@ -3,6 +3,7 @@ from typing import ClassVar, Optional
 
 import aiohttp
 from aiohttp.client_exceptions import ClientConnectorError
+from aiopath import AsyncPath
 from pyrogram.errors import PeerIdInvalid, UsernameInvalid
 
 from .. import command, module, util
@@ -153,3 +154,13 @@ class DebugModule(module.Module):
                 return f'https://del.dog/{resp_data["key"]}'
         except ClientConnectorError:
             return "__Dogbin is currently experiencing issues. Try again later.__"
+
+    @command.desc("Get Caligo loging")
+    @command.alias("getlog", "log")
+    async def cmd_getlog(self, ctx: command.Context):
+        log_file = AsyncPath("caligo.log")
+        await ctx.respond("__Grabing log..__")
+        await self.bot.client.send_document(
+            ctx.chat.id, str(log_file), force_document=True
+        )
+        return await ctx.msg.delete()
