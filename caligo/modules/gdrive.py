@@ -186,7 +186,9 @@ class GoogleDrive(module.Module):
         return "Credentials created."
 
     async def authorize(self, message: pyrogram.types.Message) -> Optional[bool]:
-        if not self.creds or not self.creds.valid:
+    if not self.creds or not self.creds.valid:
+        # Check if self.creds is a service account Credentials object
+        if isinstance(self.creds, google.oauth2.credentials.Credentials):
             if self.creds and self.creds.expired and self.creds.refresh_token:
                 self.log.info("Refreshing credentials")
                 await util.run_sync(self.creds.refresh, Request())
@@ -206,8 +208,22 @@ class GoogleDrive(module.Module):
                 await self.bot.respond(message, ret)
                 if self.creds is None:
                     return False
+        else:
+            # self.creds is not a service account Credentials object
+            # Replace this block with code to retrieve service account credentials
+            self.log.info("Retrieving service account credentials")
+            creds = await self.getServiceAccountCredentials()
 
-            await self.on_load()
+            # Save the credentials to the database
+            credential = await util.run_sync(pickle.dumps, creds)
+            await self.db.find_one_and_update(
+                {"_id": self.name}, {"$set": {"creds": credential}}
+            )
+
+            # Update self.creds with the retrieved service account credentials
+            self.creds = creds
+
+        await self.on_load()
 
     async def getInfo(self, identifier: str, fields: Iterable[str]) -> Dict[str, Any]:
         fields = ", ".join(fields)
