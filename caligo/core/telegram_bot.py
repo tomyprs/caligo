@@ -117,9 +117,25 @@ class TelegramBot(Base):
         await self.dispatch_event("load")
         self.loaded = True
 
-        await self.client.start()
+        async with asyncio.Lock():
+            # Start Telegram client
+            try:
+                await self.client.start()
+            except AttributeError:
+                self.log.error(
+                    "Unable to get input for authorization! Make sure all configuration are done before running the bot."
+                )
+                raise
         if self.has_bot:
-            await self.bot_client.start()
+            async with asyncio.Lock():
+                # Start Telegram client
+                try:
+                    self.bot_client.start()
+                except AttributeError:
+                    self.log.error(
+                        "Unable to get input for authorization! Make sure all configuration are done before running the bot."
+                    )
+                    raise
 
         user = await self.client.get_me()
         if not isinstance(user, pyrogram.types.User):
