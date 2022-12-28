@@ -130,7 +130,7 @@ class TelegramBot(Base):
             async with asyncio.Lock():
                 # Start Telegram client
                 try:
-                    self.bot_client.start()
+                    await self.bot_client.start()
                 except AttributeError:
                     self.log.error(
                         "Unable to get input for authorization! Make sure all configuration are done before running the bot."
