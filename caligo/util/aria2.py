@@ -484,13 +484,14 @@ class DirectLinks:
                 raise ValueError("ERROR: Can't extract the link")
 
     async def solidfiles(self, url: str) -> str:
-        headers = {
-            'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_9_4) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/36.0.1985.125 Safari/537.36'
-        }
-        page_source = await self.http.get(url, headers=headers)
-        page_source = await page_source.text()
-        main_options = str(re.search(r'viewerOptions\'\,\ (.*?)\)\;', page_source).group(1))
-        return json.loads(main_options)["downloadUrl"]
+        """ Solidfiles direct link generator
+        Based on https://github.com/Xonshiz/SolidFiles-Downloader
+            By https://github.com/Jusidama18 """
+        headers = {'User-Agent': self.useragent}
+        pageSource = rget(url, headers = headers).text
+        mainOptions = str(re_search(r'viewerOptions\'\,\ (.*?)\)\;', pageSource).group(1))
+        return jsonloads(mainOptions)["downloadUrl"]
+
 
     async def onedrive(self, link: str) -> str:
         link_without_query = urlparse(link)._replace(query=None).geturl()
