@@ -7,7 +7,7 @@ RUN mkdir -p /caligo
 WORKDIR /caligo
 
 # Create a Go module and download the corrupter package
-RUN go mod init github.com/vincreator/caligo && go mod edit -require github.com/r00tman/corrupter@v1.0
+RUN go mod init github.com/r00tman/corrupter && go mod edit -require github.com/r00tman/corrupter@v1.0
 
 # Build and install the corrupter binary
 RUN go install github.com/r00tman/corrupter
