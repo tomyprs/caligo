@@ -1,7 +1,7 @@
 # Build Go programs (only corrupter at the moment)
 FROM golang:1-alpine AS go-build
 RUN apk add --no-cache git
-RUN go mod download github.com/r00tman/corrupter
+RUN go mod init github.com/vincreator/caligo && go mod download github.com/r00tman/corrupter
 
 
 # Build Python package and dependencies
