@@ -70,9 +70,6 @@ RUN apk add --no-cache \
 # Create bot user
 RUN adduser -D caligo
 
-# Copy Go programs
-COPY --from=go-build /go/bin/corrupter /usr/local/bin
-
 # Copy Python venv
 ENV PATH="/opt/venv/bin:$PATH"
 COPY --from=python-build /opt/venv /opt/venv
