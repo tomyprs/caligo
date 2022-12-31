@@ -473,22 +473,23 @@ class DirectLinks:
     async def github(self, url: str) -> str:
         """ GitHub direct links generator """
         try:
-            re.findall(r'\bhttps?://.*github\.com.*releases\S+', url)[0]
+            re_findall(r'\bhttps?://.*github\.com.*releases\S+', url)[0]
         except IndexError:
-            raise ValueError("No GitHub Releases links found")
-        async with self.http.get(url, stream=True, allow_redirects=False) as resp:
-            download = await resp
+            return None
+
+        async with self.http.get(url, allow_redirects=False) as resp:
             try:
-                return download.headers["location"]
+                return resp.headers["location"]
             except KeyError:
-                raise ValueError("ERROR: Can't extract the link")
+                return None
 
     async def solidfiles(self, url: str) -> str:
         """ Solidfiles direct link generator
         Based on https://github.com/Xonshiz/SolidFiles-Downloader
             By https://github.com/Jusidama18 """
         headers = {'User-Agent': self.useragent}
-        pageSource = rget(url, headers = headers).text
+        async with self.http.get(url, headers = headers) as resp:
+            pageSource = await resp.text()
         mainOptions = str(re_search(r'viewerOptions\'\,\ (.*?)\)\;', pageSource).group(1))
         return jsonloads(mainOptions)["downloadUrl"]
 
