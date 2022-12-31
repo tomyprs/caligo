@@ -473,7 +473,7 @@ class DirectLinks:
     async def github(self, url: str) -> str:
         """ GitHub direct links generator """
         try:
-            re_findall(r'\bhttps?://.*github\.com.*releases\S+', url)[0]
+            re.findall(r'\bhttps?://.*github\.com.*releases\S+', url)[0]
         except IndexError:
             return None
 
