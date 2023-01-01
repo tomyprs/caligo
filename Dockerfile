@@ -1,5 +1,9 @@
 # Build Go programs (only corrupter at the moment)
 FROM golang:1-alpine AS go-build
+
+RUN apk add --no-cache git
+RUN s/get/install github.com/r00tman/corrupter
+
 # Build Python package and dependencies
 FROM python:3.9-alpine AS python-build
 RUN apk add --no-cache \
@@ -21,6 +25,12 @@ RUN mkdir -p /opt/venv
 WORKDIR /opt/venv
 RUN python3 -m venv /opt/venv
 ENV PATH="/opt/venv/bin:$PATH"
+
+WORKDIR /usr/src/app
+RUN chmod 777 /usr/src/app
+
+COPY requirements.txt .
+RUN pip3 install --no-cache-dir -r requirements.txt
 
 RUN mkdir -p /src
 WORKDIR /src
@@ -69,6 +79,9 @@ RUN apk add --no-cache \
 
 # Create bot user
 RUN adduser -D caligo
+
+# Copy Go programs
+COPY --from=go-build /go/bin/corrupter /usr/local/bin
 
 # Copy Python venv
 ENV PATH="/opt/venv/bin:$PATH"
